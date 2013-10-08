@@ -1,9 +1,9 @@
 CXX = g++
-CXXGLAG = -Wall
+CXXFLAG = -Wall
 SRC = $(PWD)/src/*.cpp
 OBJ = *.o
-INCLUDE = -I $(PWD)/include/.*.h
-LIBS = -lSDL
+INCLUDE = -I $(PWD)/include
+LIBS = -lSDL -lGL -lGLU
 
 OUT_EXT = cube
 
