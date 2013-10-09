@@ -3,7 +3,7 @@ CXXFLAG = -Wall
 SRC = $(PWD)/src/*.cpp
 OBJ = *.o
 INCLUDE = -I $(PWD)/include
-LIBS = -lSDL -lGL -lGLU
+LIBS = -lSDL2main -lSDL2 -lGL -lGLU
 
 OUT_EXT = cube
 
