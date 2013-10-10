@@ -1,9 +1,9 @@
 CXX = g++
 CXXFLAG = -Wall
 SRC = $(PWD)/src/*.cpp
-OBJ = main.o timer.o func.o
+OBJ = main.o timer.o func.o 
 INCLUDE = -I $(PWD)/include
-LIBS = -lSDL2main -lSDL2 -lGL -lGLU
+LIBS = -lSDL2main -lSDL2 -lGL -lGLU -lSDL_image
 
 OUT_EXT = cube
 
