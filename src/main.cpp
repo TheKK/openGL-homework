@@ -22,11 +22,9 @@ const short int SCREEN_BPP = 32;
 const short int FRAMES_PER_SECOND = 60;
 
 SDL_Window *glScreen = NULL;
-SDL_Renderer *renderer = NULL;
-SDL_Texture *texture = NULL;
-SDL_Surface *surface = NULL;
-SDL_GLContext glContext;
+SDL_Surface *glSurface = NULL;
 
+GLuint myTexture = 0;
 SDL_Event event;
 
 bool quit = false;
@@ -44,6 +42,50 @@ int lines[][ 2 ] ={ { 1, 2 }, { 2, 3 }, { 3, 4 }, { 4, 1 },
 		{ 5, 6 }, { 6, 7 }, { 7, 8 }, { 8, 5 } };
 
 int face[][ 4 ] = { { 1, 2 , 3, 4 }, { 5, 6, 7, 8 }, { 2, 3, 7, 6 }, { 1, 4, 8, 5 }, { 3, 4, 8, 7 }, { 1, 2, 6, 5 } };
+
+int ToPow2(int x)
+{
+    int y = 1;
+    while (y < x)
+        y <<= 1;
+    return y;
+}
+
+GLuint LoadTexture(const char* filename)
+{
+    // 画像を読み込む
+    SDL_Surface* surface1 = SDL_LoadBMP(filename);
+    if (!surface1) {
+        fprintf(stderr, "%sを読み込めませんでした: %s\n", SDL_GetError());
+        return 0;
+    }
+
+    // フォーマットをRGBAに変換する
+    SDL_Surface* surface2 = SDL_CreateRGBSurface(SDL_SWSURFACE, 
+            ToPow2(surface1->w), ToPow2(surface1->h), 32,
+            0x000000ff, 0x0000ff00, 0x00ff0000, 0xff000000);
+    if (!surface2) {
+        fprintf(stderr, "変換用サーフィスを確保できませんでした: %s\n", SDL_GetError());
+        SDL_FreeSurface(surface1);
+        return 0;
+    }
+    SDL_BlitSurface(surface1, NULL, surface2, NULL);
+
+    // テクスチャを作る
+    GLuint name;
+    glGenTextures(1, &name);
+    glBindTexture(GL_TEXTURE_2D, name);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    glTexImage2D(GL_TEXTURE_2D, 0, 4, surface2->w, surface2->h, 0, GL_RGBA,
+            GL_UNSIGNED_BYTE, surface2->pixels);
+
+    // 後片付け
+    SDL_FreeSurface(surface2);
+    SDL_FreeSurface(surface1);
+
+    return name;
+}
 
 bool initGL()
 {	
@@ -84,8 +126,6 @@ bool init()
 	//initialize SDL
 	if( SDL_Init( SDL_INIT_VIDEO ) < 0 )	return false;
 
-	
-
 	//Create Window
 	glScreen = SDL_CreateWindow( "OpenGL test",
 			SDL_WINDOWPOS_CENTERED,
@@ -93,10 +133,8 @@ bool init()
 			SCREEN_WIDTH, SCREEN_HEIGHT,
 			SDL_WINDOW_OPENGL | SDL_WINDOW_RESIZABLE );
 
-	renderer = SDL_CreateRenderer( glScreen, -1, SDL_RENDERER_ACCELERATED );
-	SDL_SetRenderDrawColor( renderer, 0, 255, 0, 0 );
-	SDL_RenderSetLogicalSize( renderer, SCREEN_WIDTH, SCREEN_HEIGHT);
-
+	glSurface = SDL_GetWindowSurface( glScreen );
+	
 	//Initialize OpenGL
 	if( initGL() == false )	return false;
 
@@ -105,18 +143,20 @@ bool init()
 	return true;
 }
 
-void handleKeys( unsigned char key, int x, int y )
+void handleKeys( int key, int x, int y )
 {
 	//Toggle quad
 	switch( key ){
-	case 'q':	renderQuad = !renderQuad;	break;
+	case SDLK_q:	renderQuad = !renderQuad;	break;
 	case SDLK_ESCAPE:	quit = true;	break;
-	case 'x':	axis = 0;	break;
-	case 'y':	axis = 1;	break;
-	case 'z':	axis = 2;	break;
-	case '1':	mode = TRANSLATION;	break;
-	case '2':	mode = ROTATION;	break;
-	case '3':	mode = SCALE;		break;
+	case SDLK_x:	axis = 0;	break;
+	case SDLK_y:	axis = 1;	break;
+	case SDLK_z:	axis = 2;	break;
+	case SDLK_1:	mode = TRANSLATION;	break;
+	case SDLK_2:	mode = ROTATION;	break;
+	case SDLK_3:	mode = SCALE;		break;
+	case SDLK_9:	glEnable( GL_TEXTURE_2D );	break;
+	case SDLK_0:	glDisable( GL_TEXTURE_2D );	break;
 	case SDLK_RETURN:
 		if( windowed ){
 			windowed = !windowed;
@@ -155,7 +195,7 @@ void resize( int width, int height )
 	glMatrixMode( GL_PROJECTION );
 	glLoadIdentity();	
 
-	glOrtho( -1 * portWidth / 2, portWidth / 2, portHeight / 2, -1 * portHeight / 2, 20, -20 );
+	glOrtho( -20, 20, 20, -20, 50, -50 );
 }
 
 void update()
@@ -164,11 +204,14 @@ void update()
 }
 
 void render()
-{	
+{
+	//Clear the screen	
 	glClear( GL_COLOR_BUFFER_BIT );
 
+	//Make a square background
 	glColor3ub( 255, 255, 255 );
 	glRecti( -20, -20, 20, 20 );
+
 	//Render quad
 	if( renderQuad == true ){
 		glColor3f( 0, 100, 255 );
@@ -178,6 +221,8 @@ void render()
 					glVertex3dv( cube[ face[ i ][ j ] ]);
 		glEnd();
 	}	
+
+	SDL_GL_SwapWindow( glScreen );
 }
 
 void cleanUp()
@@ -185,25 +230,18 @@ void cleanUp()
 	SDL_DestroyWindow( glScreen );
 	glScreen = NULL;
 
-	SDL_DestroyTexture( texture );
-	texture = NULL;
-
 	SDL_Quit();
 }
 
 int main( int argc, char* argv[] )
 {
 	Timer fps;
-	double scaleSize = 1;
+	double scaleSize[ 3 ] = { 1, 1, 1, };
 	if( init() == false ){
 		cout << "error" << endl;
 		return 1;
 	}
 	
-	surface = SDL_LoadBMP( "menuLogo.bmp" );
-	texture = SDL_CreateTextureFromSurface( renderer, surface );
-	SDL_FreeSurface( surface );
-
 	while( quit == false ){
 		
 		fps.start();
@@ -235,9 +273,9 @@ int main( int argc, char* argv[] )
 					break;
 				case SCALE:
 					switch( axis ){
-					case X_AXIS:	scale( cube, scaleSize, 1, 1 );	break;
-					case Y_AXIS:	scale( cube, 1, scaleSize, 1 );	break;
-					case Z_AXIS:	scale( cube, 1, 1, scaleSize );	break;
+					case X_AXIS:	scale( cube, scaleSize[ 0 ], 1, 1 );	break;
+					case Y_AXIS:	scale( cube, 1, scaleSize[ 1 ], 1 );	break;
+					case Z_AXIS:	scale( cube, 1, 1, scaleSize[ 2 ] );	break;
 					}
 					break;
 				}
@@ -250,7 +288,6 @@ int main( int argc, char* argv[] )
 		
 		render();
 
-		SDL_GL_SwapWindow( glScreen );
 
 		if( fps.getTicks() < 1000 / FRAMES_PER_SECOND )
 			SDL_Delay( 1000 / FRAMES_PER_SECOND - fps.getTicks() );
