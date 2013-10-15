@@ -1,9 +1,9 @@
 CXX = g++
-CXXFLAG = -Wall
+CXXFLAG = -Wall -DGLEW_STATIC 
 SRC = $(PWD)/src/*.cpp
-OBJ = main.o timer.o func.o 
+OBJ = main.o timer.o 
 INCLUDE = -I $(PWD)/include
-LIBS = -lSDL2main -lSDL2 -lGL -lGLU -lSDL_image
+LIBS = -lSDL2main -lSDL2 -lGLEW -lSOIL -lGL -lGLU -lSDL_image
 
 OUT_EXT = cube
 

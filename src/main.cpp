@@ -1,299 +1,266 @@
 /*
 main.cpp
 */
-
 #include <iostream>
+#include <sstream>
+#include <fstream>
+#include <GL/glew.h>
 #include <SDL2/SDL.h>
 #include <SDL2/SDL_opengl.h>
-#include <GL/glu.h>
+#include <SOIL/SOIL.h>
 #include "timer.h"
-#include "func.h"
 
 using namespace std;
 
-enum axis { X_AXIS, Y_AXIS, Z_AXIS };
-enum mode { TRANSLATION, ROTATION, SCALE };
+const int SCREEN_WIDTH = 800;
+const int SCREEN_HEIGHT = SCREEN_WIDTH;
+const int SCREEN_BPP = 32;
 
-const short int SCREEN_HEIGHT = 500;
-const short int SCREEN_WIDTH = SCREEN_HEIGHT;
-const GLdouble SCREEN_RATIO = SCREEN_WIDTH / SCREEN_HEIGHT;
-const short int SCREEN_BPP = 32;
+const int FRAME_PER_SEC = 60;
 
-const short int FRAMES_PER_SECOND = 60;
+SDL_Window *glWindow = NULL;
 
-SDL_Window *glScreen = NULL;
-SDL_Surface *glSurface = NULL;
+SDL_GLContext glContext;
 
-GLuint myTexture = 0;
-SDL_Event event;
+//Shader sources
+const GLchar* vertexSource = 
+		"#version 150 core\n"
+		"in vec2 position;"
+		"in vec3 color;"
+		"in vec2 texcoord;"
+		"out vec3 Color;"
+		"out vec2 Texcoord;"
+		"void main() {"
+		"	Color = color;"
+		"	Texcoord = texcoord;"
+		"	position = position;"
+		"	gl_Position = vec4( position, 0.0, 1.0 );"
+		"}";
 
-bool quit = false;
-bool renderQuad = true;
-bool windowed = true;
+const GLchar* fragmentSource = 
+		"#version 150 core\n"
+		"in vec3 Color;"
+		"in vec2 Texcoord;"
+		"out vec4 outColor;"
+		"uniform sampler2D texKitten;"
+		"void main() {"
+		"	outColor = texture( texKitten, Texcoord );"
+		"}";
 
-int axis = X_AXIS;
-int mode = TRANSLATION;
+GLuint vbo;		//Vertex Buffer Object
+GLuint vao;		//Vertex Array Object
+GLuint ebo;		//Element Buffer Object
+GLuint texture[ 2 ];		//Texture Buffer	
+GLuint vertexShader;	
+GLuint fragmentShader;
+GLuint shaderProgram;
+GLuint posAttrib;	//Position Attribute
+GLuint colAttrib;	//Color Attribute
+GLuint texAttrib;	//Texture Attribute
+GLuint elements[] = {
+	0, 1, 2,
+	2, 3, 0	
+};
+GLfloat triangle[] = {
+	-0.5f, 0.5f, 1.0f, 1.0f, 1.0f,
+	0.5f, 0.5f, 1.0f, 0.0f, 0.0f,
+	0.5f, -0.5f, 0.0f, 1.0f, 0.0f,
+	-0.5f, -0.5f, 0.0f, 0.0f, 1.0f
+};
 
-GLdouble cube[][ 3 ] = { { 10, 10, 10 }, {-10, 10, 10 }, {-10,-10, 10}, { 10,-10, 10 },
-		{ 10, 10,-10 }, {-10, 10,-10 }, {-10,-10,-10}, { 10,-10,-10} };
-
-int lines[][ 2 ] ={ { 1, 2 }, { 2, 3 }, { 3, 4 }, { 4, 1 },
-		{ 1, 5 }, { 2, 6 }, { 3, 7 }, { 4, 8 },
-		{ 5, 6 }, { 6, 7 }, { 7, 8 }, { 8, 5 } };
-
-int face[][ 4 ] = { { 1, 2 , 3, 4 }, { 5, 6, 7, 8 }, { 2, 3, 7, 6 }, { 1, 4, 8, 5 }, { 3, 4, 8, 7 }, { 1, 2, 6, 5 } };
-
-int ToPow2(int x)
+string loadShaderSource( string filePath )
 {
-    int y = 1;
-    while (y < x)
-        y <<= 1;
-    return y;
-}
 
-GLuint LoadTexture(const char* filename)
-{
-    // 画像を読み込む
-    SDL_Surface* surface1 = SDL_LoadBMP(filename);
-    if (!surface1) {
-        fprintf(stderr, "%sを読み込めませんでした: %s\n", SDL_GetError());
-        return 0;
-    }
+	ifstream source( filePath.c_str(), ios::in );
+	if( !source.good() ){
+		cout << "File open failed: " << filePath << endl;
+		exit( 1 );
+	}
+	
+	stringstream buffer;
+	buffer << source.rdbuf();
+	source.close();
 
-    // フォーマットをRGBAに変換する
-    SDL_Surface* surface2 = SDL_CreateRGBSurface(SDL_SWSURFACE, 
-            ToPow2(surface1->w), ToPow2(surface1->h), 32,
-            0x000000ff, 0x0000ff00, 0x00ff0000, 0xff000000);
-    if (!surface2) {
-        fprintf(stderr, "変換用サーフィスを確保できませんでした: %s\n", SDL_GetError());
-        SDL_FreeSurface(surface1);
-        return 0;
-    }
-    SDL_BlitSurface(surface1, NULL, surface2, NULL);
-
-    // テクスチャを作る
-    GLuint name;
-    glGenTextures(1, &name);
-    glBindTexture(GL_TEXTURE_2D, name);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-    glTexImage2D(GL_TEXTURE_2D, 0, 4, surface2->w, surface2->h, 0, GL_RGBA,
-            GL_UNSIGNED_BYTE, surface2->pixels);
-
-    // 後片付け
-    SDL_FreeSurface(surface2);
-    SDL_FreeSurface(surface1);
-
-    return name;
-}
-
-bool initGL()
+	return buffer.str();
+}	
+	
+bool init ()
 {	
-	//Set as double buffer
-	SDL_GL_SetAttribute( SDL_GL_DOUBLEBUFFER, 1 );
-	SDL_GL_SetAttribute(SDL_GL_DEPTH_SIZE, 16);
+	//Initiralize SDL subsystem
+	if( SDL_Init( SDL_INIT_VIDEO ) < 0 )	return false;
+
+	//Setup the window
+	glWindow = SDL_CreateWindow( "OpenGL",
+				SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED,
+				SCREEN_WIDTH, SCREEN_HEIGHT,
+				SDL_WINDOW_OPENGL );
+
+	//Create openGL context	
+	glContext = SDL_GL_CreateContext( glWindow );
+
+	//Force GLEW to use morden OpenGL method for checking functions
+	glewExperimental = GL_TRUE;
+	glewInit();
+
+	//Create a VertexArrayObject and copy the vertex date to it
+	glGenVertexArrays( 1, &vao );
+	glBindVertexArray( vao );
+
+	//Generate a VertexBufferObject and store the vertec data in it
+	glGenBuffers( 1, &vbo );
+	glBindBuffer( GL_ARRAY_BUFFER, vbo );
+	glBufferData( GL_ARRAY_BUFFER, sizeof( triangle ), triangle, GL_STATIC_DRAW );
+
+	//Generate a ElementBufferObject and store the element date in it
+	glGenBuffers( 1, &ebo );
+	glBindBuffer( GL_ELEMENT_ARRAY_BUFFER, ebo );
+	glBufferData( GL_ELEMENT_ARRAY_BUFFER, sizeof( elements ), elements, GL_STATIC_DRAW );	
 
 
-	//Initialize Projection Matrix
-	glMatrixMode( GL_PROJECTION );
-	glLoadIdentity();
+	/*SHADERS*/
+	//Create and compile vertex shader
+	string str = loadShaderSource( "shader/vertexShader" );
+	vertexShader = glCreateShader( GL_VERTEX_SHADER );
+	glShaderSource( vertexShader,
+			 1,
+			(const GLchar**)&str,
+			NULL
+			);		// "1" mean there is only one char array for your source, "NULL" mean the array terminate at NULL character
+	glCompileShader( vertexShader );
 
+	//Create and compile fragment shader
+	str = loadShaderSource( "shader/fragmentShader" );
+	fragmentShader = glCreateShader( GL_FRAGMENT_SHADER );
+	glShaderSource( fragmentShader,
+			1,
+			(const GLchar**)&str,
+			NULL
+			);			//same as the vertex shader
+	glCompileShader( fragmentShader );
+
+	//Link the vertex and fragment shader into a shader program
+	shaderProgram = glCreateProgram();
+	glAttachShader( shaderProgram, vertexShader );
+	glAttachShader( shaderProgram, fragmentShader );	
+	glBindFragDataLocation( shaderProgram, 0, "outColor");		///NEED MORE STUDY!!!
+	glLinkProgram( shaderProgram );
+	glUseProgram( shaderProgram );
+	
+	//Specity the layout of the vertex data			NEED MORE STUDY!!!
+	posAttrib = glGetAttribLocation( shaderProgram, "position" );		
+	glEnableVertexAttribArray( posAttrib );
+	glVertexAttribPointer( posAttrib, 2, GL_FLOAT, GL_FALSE, 5 * sizeof(GLfloat), 0 );
+
+	colAttrib = glGetAttribLocation( shaderProgram, "color" );
+	glEnableVertexAttribArray( colAttrib );
+	glVertexAttribPointer( colAttrib, 3, GL_FLOAT, GL_FALSE, 5 * sizeof(GLfloat), (void*)( 2 * sizeof(GLfloat) ) );
+
+	//Setup the clear color
+	glClearColor( 0.0f, 0.0f, 0.0f, 1.0f );	
+
+	//Setup viewport
 	glViewport( 0, 0, SCREEN_WIDTH, SCREEN_HEIGHT );
-	//Set the projection property
-	glOrtho( -20, 20, 20, -20, 50, -50 );
-
-
-	//Initialize Modelview Matrix
-	glMatrixMode( GL_MODELVIEW );
-	glLoadIdentity();
-
-	//Initialize clear color
-	glClearColor( 0.f, 0.f, 0.f, 1.f );
-
+		
 	//Check for error
-	GLenum error = glGetError();
-	if( error != GL_NO_ERROR ){
-		cout << "Error initializing OpenGL! " << gluErrorString( error ) << endl;
+	GLint status;
+	glGetShaderiv( vertexShader, GL_COMPILE_STATUS, &status );
+	if( status != GL_TRUE ){
+		char vlog[ 255 ];
+		glGetShaderInfoLog( vertexShader, 512, NULL, vlog );
+		for( int i = 0; i < 255 ; i++ )		
+			cout << vlog[ i ];
+		cout << endl;
+		return false;
+	}
+	
+	glGetShaderiv( fragmentShader, GL_COMPILE_STATUS, &status );
+	if( status != GL_TRUE ){
+		char flog[ 255 ];
+		glGetShaderInfoLog( fragmentShader, 512, NULL, flog );
+		for( int i = 0; i < 255; i++ )		
+			cout << flog[ i ];
+		cout << endl;
 		return false;
 	}
 
+	GLenum error = glGetError();
+	if( error != GL_NO_ERROR ){	
+		cout << "error initialize OpenGL: " << gluErrorString( error ) << endl;
+		return false;
+	}
 
-	return true;
-}	
-
-bool init()
-{
-	//initialize SDL
-	if( SDL_Init( SDL_INIT_VIDEO ) < 0 )	return false;
-
-	//Create Window
-	glScreen = SDL_CreateWindow( "OpenGL test",
-			SDL_WINDOWPOS_CENTERED,
-			SDL_WINDOWPOS_CENTERED,
-			SCREEN_WIDTH, SCREEN_HEIGHT,
-			SDL_WINDOW_OPENGL | SDL_WINDOW_RESIZABLE );
-
-	glSurface = SDL_GetWindowSurface( glScreen );
-	
-	//Initialize OpenGL
-	if( initGL() == false )	return false;
-
-	//Load img
-		
 	return true;
 }
 
-void handleKeys( int key, int x, int y )
+void draw ()
 {
-	//Toggle quad
-	switch( key ){
-	case SDLK_q:	renderQuad = !renderQuad;	break;
-	case SDLK_ESCAPE:	quit = true;	break;
-	case SDLK_x:	axis = 0;	break;
-	case SDLK_y:	axis = 1;	break;
-	case SDLK_z:	axis = 2;	break;
-	case SDLK_1:	mode = TRANSLATION;	break;
-	case SDLK_2:	mode = ROTATION;	break;
-	case SDLK_3:	mode = SCALE;		break;
-	case SDLK_9:	glEnable( GL_TEXTURE_2D );	break;
-	case SDLK_0:	glDisable( GL_TEXTURE_2D );	break;
-	case SDLK_RETURN:
-		if( windowed ){
-			windowed = !windowed;
-			SDL_SetWindowFullscreen( glScreen, SDL_WINDOW_FULLSCREEN_DESKTOP );
-		}
-		else{	
-			windowed = !windowed;
-			SDL_SetWindowFullscreen( glScreen, 0 );
-		}
-		break;
-	}	
-}
-
-void resize( int width, int height )
-{
-	GLdouble resizeRaiot = GLdouble( width ) / GLdouble( height );
-	GLint blank;
-	GLint portWidth;
-	GLint portHeight;
-	
-	if( resizeRaiot > SCREEN_RATIO ){
-		portHeight = GLint( height );
-		portWidth = portHeight * SCREEN_RATIO;
-		blank = ( GLint( width ) - portWidth ) / 2;
-
-		glViewport( blank, 0, portWidth, portHeight );
-	}
-	else if( resizeRaiot < SCREEN_RATIO ){
-		portWidth = GLint( width );
-		portHeight = portWidth / SCREEN_RATIO;
-		blank = ( GLint( height ) - portHeight ) / 2;
-
-		glViewport( 0, blank, portWidth, portHeight );
-	}
-	
-	glMatrixMode( GL_PROJECTION );
-	glLoadIdentity();	
-
-	glOrtho( -20, 20, 20, -20, 50, -50 );
-}
-
-void update()
-{
-
-}
-
-void render()
-{
-	//Clear the screen	
+	//Clear the screen
 	glClear( GL_COLOR_BUFFER_BIT );
+	
+	//Draw a triangle from the three vertices
+	glDrawElements( GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0 );		//Load 3 indices to draw, the data type is GLuint, and there is no offset
 
-	//Make a square background
-	glColor3ub( 255, 255, 255 );
-	glRecti( -20, -20, 20, 20 );
-
-	//Render quad
-	if( renderQuad == true ){
-		glColor3f( 0, 100, 255 );
-		glBegin( GL_QUADS );
-			for( int i = 0; i < 1; i++ )
-				for( int j = 0; j < 4; j++ )
-					glVertex3dv( cube[ face[ i ][ j ] ]);
-		glEnd();
-	}	
-
-	SDL_GL_SwapWindow( glScreen );
+	//Swap window
+	SDL_GL_SwapWindow( glWindow );			
 }
 
-void cleanUp()
-{	
-	SDL_DestroyWindow( glScreen );
-	glScreen = NULL;
+void update ()
+{
+}
 
+void cleanUp ()	
+{
+	//Delete window
+	SDL_DestroyWindow( glWindow );
+	glWindow = NULL;
+
+	//Delete context	
+	SDL_GL_DeleteContext( glContext );
+
+	//Delete shader and program
+	glDeleteProgram( shaderProgram );
+	glDeleteShader( vertexShader );
+	glDeleteShader( fragmentShader );
+
+	//Delete VBO and VAO	
+	glDeleteBuffers( 1, &vbo );
+	glDeleteVertexArrays( 1, &vao );
+
+	//Delete texture
+	glDeleteTextures( 2, texture );
+	
+	//Exit SDL subsystem	
 	SDL_Quit();
 }
-
-int main( int argc, char* argv[] )
+int main ( int argc, char* argv[] )
 {
+	if( init() == false )	return 1;
+
 	Timer fps;
-	double scaleSize[ 3 ] = { 1, 1, 1, };
-	if( init() == false ){
-		cout << "error" << endl;
-		return 1;
-	}
+	SDL_Event event;
+	bool quit = false;
 	
 	while( quit == false ){
 		
+		//Start to count for the limited frame rate	
 		fps.start();
 
+		//Event handler
 		while( SDL_PollEvent( &event ) ){
-				
-			//Window resize event
 			if( event.type == SDL_QUIT )	quit = true;
-			if( event.type == SDL_KEYDOWN ){
-				int x = 0, y = 0;
-				SDL_GetMouseState( &x, &y );
-				handleKeys( event.key.keysym.sym, x, y );
-			}
-			if( event.type == SDL_MOUSEWHEEL ){
-				switch( mode ){
-				case TRANSLATION:
-					switch( axis ){
-					case X_AXIS:	tranlate( cube, event.wheel.y, 0, 0 );	break;
-					case Y_AXIS:	tranlate( cube, 0, event.wheel.y, 0 );	break;
-					case Z_AXIS:	tranlate( cube, 0, 0, event.wheel.y );	break;
-					}
-					break;
-				case ROTATION:
-					switch( axis ){
-					case X_AXIS:	rotateX( cube, event.wheel.y / 10.0 );	break;
-					case Y_AXIS:	rotateY( cube, event.wheel.y / 10.0 );	break;
-					case Z_AXIS:	rotateZ( cube, event.wheel.y / 10.0 );	break;
-					}
-					break;
-				case SCALE:
-					switch( axis ){
-					case X_AXIS:	scale( cube, scaleSize[ 0 ], 1, 1 );	break;
-					case Y_AXIS:	scale( cube, 1, scaleSize[ 1 ], 1 );	break;
-					case Z_AXIS:	scale( cube, 1, 1, scaleSize[ 2 ] );	break;
-					}
-					break;
-				}
-			}
-			if( event.type == SDL_WINDOWEVENT && event.window.event == SDL_WINDOWEVENT_RESIZED )
-				resize( event.window.data1, event.window.data2 );
-		}
-	
+			if( event.type == SDL_KEYDOWN && event.key.keysym.sym == SDLK_q )	quit = true;
+		}		
+		
 		update();
-		
-		render();
 
+		draw();
 
-		if( fps.getTicks() < 1000 / FRAMES_PER_SECOND )
-			SDL_Delay( 1000 / FRAMES_PER_SECOND - fps.getTicks() );
-
-	}
+		//Limit the max frame rate
+		if( fps.getTicks() < 1000 / FRAME_PER_SEC )
+			SDL_Delay( ( 1000 / FRAME_PER_SEC ) - fps.getTicks() );
+	}	
+	
 	cleanUp();
-		
+
 	return 0;
 }
