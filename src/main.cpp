@@ -22,51 +22,50 @@ SDL_Window *glWindow = NULL;
 
 SDL_GLContext glContext;
 
-//Shader sources
-const GLchar* vertexSource = 
-		"#version 150 core\n"
-		"in vec2 position;"
-		"in vec3 color;"
-		"in vec2 texcoord;"
-		"out vec3 Color;"
-		"out vec2 Texcoord;"
-		"void main() {"
-		"	Color = color;"
-		"	Texcoord = texcoord;"
-		"	position = position;"
-		"	gl_Position = vec4( position, 0.0, 1.0 );"
-		"}";
-
-const GLchar* fragmentSource = 
-		"#version 150 core\n"
-		"in vec3 Color;"
-		"in vec2 Texcoord;"
-		"out vec4 outColor;"
-		"uniform sampler2D texKitten;"
-		"void main() {"
-		"	outColor = texture( texKitten, Texcoord );"
-		"}";
-
 GLuint vbo;		//Vertex Buffer Object
 GLuint vao;		//Vertex Array Object
 GLuint ebo;		//Element Buffer Object
-GLuint texture[ 2 ];		//Texture Buffer	
 GLuint vertexShader;	
 GLuint fragmentShader;
 GLuint shaderProgram;
 GLuint posAttrib;	//Position Attribute
 GLuint colAttrib;	//Color Attribute
-GLuint texAttrib;	//Texture Attribute
+GLuint uniTrans;
+
+enum AXIS{ X_AXIS, Y_AXIS, Z_AXIS };
+int selectAxis = X_AXIS;
 GLuint elements[] = {
-	0, 1, 2,
-	2, 3, 0	
+	0, 1,	
+	1, 2,
+	2, 3,
+	3, 0,
+	4, 5,
+	5, 6,
+	6, 7,
+	7, 4,
+	0, 4,
+	1, 5,
+	2, 6,
+	3, 7
 };
+
 GLfloat triangle[] = {
-	-0.5f, 0.5f, 1.0f, 1.0f, 1.0f,
-	0.5f, 0.5f, 1.0f, 0.0f, 0.0f,
-	0.5f, -0.5f, 0.0f, 1.0f, 0.0f,
-	-0.5f, -0.5f, 0.0f, 0.0f, 1.0f
+	1.0, 1.0, 1.0, 1.0, 0.0, 0.0,
+	-1.0, 1.0, 1.0, 1.0, 0.0, 0.0,
+	-1.0,-1.0, 1.0, 1.0, 0.0, 0.0,
+	1.0,-1.0, 1.0, 1.0, 0.0, 0.0,
+	1.0, 1.0,-1.0, 0.0, 1.0, 0.0,
+	-1.0, 1.0,-1.0, 0.0, 1.0, 0.0,
+	-1.0,-1.0,-1.0, 0.0, 1.0, 0.0,
+	1.0,-1.0,-1.0, 0.0, 1.0, 0.0
 };
+
+float matrix[][ 4 ] = {
+		{ 1, 0, 0, 0 },
+		{ 0, 1, 0, 0 },
+		{ 0, 0, 1, 0 },
+		{ 0, 0, 0, 1 }
+};	
 
 string loadShaderSource( string filePath )
 {
@@ -149,16 +148,16 @@ bool init ()
 	//Specity the layout of the vertex data			NEED MORE STUDY!!!
 	posAttrib = glGetAttribLocation( shaderProgram, "position" );		
 	glEnableVertexAttribArray( posAttrib );
-	glVertexAttribPointer( posAttrib, 2, GL_FLOAT, GL_FALSE, 5 * sizeof(GLfloat), 0 );
+	glVertexAttribPointer( posAttrib, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(GLfloat), 0 );
 
 	colAttrib = glGetAttribLocation( shaderProgram, "color" );
 	glEnableVertexAttribArray( colAttrib );
-	glVertexAttribPointer( colAttrib, 3, GL_FLOAT, GL_FALSE, 5 * sizeof(GLfloat), (void*)( 2 * sizeof(GLfloat) ) );
+	glVertexAttribPointer( colAttrib, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(GLfloat), (void*)( 3 * sizeof(GLfloat) ) );
 
 	//Setup the clear color
 	glClearColor( 0.0f, 0.0f, 0.0f, 1.0f );	
 
-	//Setup viewport
+	//Setup viewport and othometric
 	glViewport( 0, 0, SCREEN_WIDTH, SCREEN_HEIGHT );
 		
 	//Check for error
@@ -198,7 +197,7 @@ void draw ()
 	glClear( GL_COLOR_BUFFER_BIT );
 	
 	//Draw a triangle from the three vertices
-	glDrawElements( GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0 );		//Load 3 indices to draw, the data type is GLuint, and there is no offset
+	glDrawElements( GL_LINES, 24, GL_UNSIGNED_INT, 0 );		//Load 3 indices to draw, the data type is GLuint, and there is no offset
 
 	//Swap window
 	SDL_GL_SwapWindow( glWindow );			
@@ -206,6 +205,7 @@ void draw ()
 
 void update ()
 {
+	glUniformMatrix4fv( uniTrans, 1, GL_FALSE, (GLfloat*)matrix );
 }
 
 void cleanUp ()	
@@ -226,12 +226,35 @@ void cleanUp ()
 	glDeleteBuffers( 1, &vbo );
 	glDeleteVertexArrays( 1, &vao );
 
-	//Delete texture
-	glDeleteTextures( 2, texture );
-	
 	//Exit SDL subsystem	
 	SDL_Quit();
 }
+
+void eventHandler( int key )
+{
+	switch( key ){
+	case SDLK_x:	selectAxis = X_AXIS;	break;
+	case SDLK_y:	selectAxis = Y_AXIS;	break;
+	case SDLK_z:	selectAxis = Z_AXIS;	break;
+	case SDLK_r:	matrix[1][1] *= -1;	break;
+	
+	case SDLK_UP:
+		switch( selectAxis ){
+		case X_AXIS:	matrix[0][3] += 0.05;	break;
+		case Y_AXIS:	matrix[1][3] += 0.05;	break;
+		case Z_AXIS:	matrix[2][3] += 0.05;	break;
+		}
+		break;
+	case SDLK_DOWN:
+		switch( selectAxis ){
+		case X_AXIS:	matrix[0][3] -= 0.05;	break;
+		case Y_AXIS:	matrix[1][3] -= 0.05;	break;
+		case Z_AXIS:	matrix[2][3] -= 0.05;	break;
+		}
+		break;
+	}
+}
+
 int main ( int argc, char* argv[] )
 {
 	if( init() == false )	return 1;
@@ -239,6 +262,8 @@ int main ( int argc, char* argv[] )
 	Timer fps;
 	SDL_Event event;
 	bool quit = false;
+
+	uniTrans = glGetUniformLocation( shaderProgram, "trans" );
 	
 	while( quit == false ){
 		
@@ -248,7 +273,7 @@ int main ( int argc, char* argv[] )
 		//Event handler
 		while( SDL_PollEvent( &event ) ){
 			if( event.type == SDL_QUIT )	quit = true;
-			if( event.type == SDL_KEYDOWN && event.key.keysym.sym == SDLK_q )	quit = true;
+			if( event.type == SDL_KEYDOWN )	eventHandler( event.key.keysym.sym );
 		}		
 		
 		update();
