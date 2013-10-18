@@ -30,10 +30,11 @@ GLuint fragmentShader;
 GLuint shaderProgram;
 GLuint posAttrib;	//Position Attribute
 GLuint colAttrib;	//Color Attribute
-GLuint uniTrans;
 
 enum AXIS{ X_AXIS, Y_AXIS, Z_AXIS };
+enum MODE{ ROTATE, TRANSLATE, SCALE };
 int selectAxis = X_AXIS;
+int selectMode = ROTATE;
 GLuint elements[] = {
 	0, 1,	
 	1, 2,
@@ -60,16 +61,59 @@ GLfloat triangle[] = {
 	1.0,-1.0,-1.0, 0.0, 1.0, 0.0
 };
 
-float matrix[][ 4 ] = {
+GLuint uniRotaX;
+float degreeX = 0;
+float rotaXMat[][ 4 ] = {
 		{ 1, 0, 0, 0 },
 		{ 0, 1, 0, 0 },
 		{ 0, 0, 1, 0 },
 		{ 0, 0, 0, 1 }
 };	
 
+GLuint uniRotaY;
+float degreeY = 0;
+float rotaYMat[][ 4 ] = {
+		{ 1, 0, 0, 0 },
+		{ 0, 1, 0, 0 },
+		{ 0, 0, 1, 0 },
+		{ 0, 0, 0, 1 }
+};	
+
+GLuint uniRotaZ;
+float degreeZ = 0;
+float rotaZMat[][ 4 ] = {
+		{ 1, 0, 0, 0 },
+		{ 0, 1, 0, 0 },
+		{ 0, 0, 1, 0 },
+		{ 0, 0, 0, 1 }
+};	
+
+GLuint uniModel;
+float modelMat[][ 4 ] = {
+		{ 1, 0, 0, 0 },
+		{ 0, 1, 0, 0 },
+		{ 0, 0, 1, 0 },
+		{ 0, 0, 0, 1 }
+};	
+
+GLuint uniView;
+float viewMat[][ 4 ] = {
+		{ 1, 0, 0, 0 },
+		{ 0, 1, 0, 0 },
+		{ 0, 0, 1, 0 },
+		{ 0, 0, 0, 1 }
+};	
+
+GLuint uniProj;
+float projMat[][ 4 ] = {	
+		{ 1, 0, 0, 0 },
+		{ 0, 1, 0, 0 },
+		{ 0, 0, 0, 0 },
+		{ 0, 0, 0, 1 }
+};	
+
 string loadShaderSource( string filePath )
 {
-
 	ifstream source( filePath.c_str(), ios::in );
 	if( !source.good() ){
 		cout << "File open failed: " << filePath << endl;
@@ -205,7 +249,12 @@ void draw ()
 
 void update ()
 {
-	glUniformMatrix4fv( uniTrans, 1, GL_FALSE, (GLfloat*)matrix );
+	glUniformMatrix4fv( uniRotaX, 1, GL_FALSE, (GLfloat*)rotaXMat );
+	glUniformMatrix4fv( uniRotaY, 1, GL_FALSE, (GLfloat*)rotaYMat );
+	glUniformMatrix4fv( uniRotaZ, 1, GL_FALSE, (GLfloat*)rotaZMat );
+	glUniformMatrix4fv( uniModel, 1, GL_FALSE, (GLfloat*)modelMat );
+	glUniformMatrix4fv( uniView, 1, GL_FALSE, (GLfloat*)viewMat );
+	glUniformMatrix4fv( uniProj, 1, GL_FALSE, (GLfloat*)projMat );
 }
 
 void cleanUp ()	
@@ -236,21 +285,96 @@ void eventHandler( int key )
 	case SDLK_x:	selectAxis = X_AXIS;	break;
 	case SDLK_y:	selectAxis = Y_AXIS;	break;
 	case SDLK_z:	selectAxis = Z_AXIS;	break;
-	case SDLK_r:	matrix[1][1] *= -1;	break;
 	
+	case SDLK_s:	selectMode = SCALE;	break;
+	case SDLK_r:	selectMode = ROTATE;	break;
+	case SDLK_t:	selectMode = TRANSLATE;	break;
+		
 	case SDLK_UP:
-		switch( selectAxis ){
-		case X_AXIS:	matrix[0][3] += 0.05;	break;
-		case Y_AXIS:	matrix[1][3] += 0.05;	break;
-		case Z_AXIS:	matrix[2][3] += 0.05;	break;
-		}
+		switch( selectMode ){
+		case TRANSLATE:
+			switch( selectAxis ){
+			case X_AXIS:	modelMat[3][0] += 0.05;	break;
+			case Y_AXIS:	modelMat[3][1] += 0.05;	break;
+			case Z_AXIS:	modelMat[3][2] += 0.05;	break;
+			}
+			break;
+		case SCALE:
+			switch( selectAxis ){
+			case X_AXIS:	modelMat[0][0] += 0.05;	break;
+			case Y_AXIS:	modelMat[1][1] += 0.05;	break;
+			case Z_AXIS:	modelMat[2][2] += 0.05;	break;
+			}
+			break;
+		case ROTATE:
+			switch( selectAxis ){
+			case X_AXIS:
+				degreeX += 0.05;
+				rotaXMat[1][1] = cos( degreeX );
+				rotaXMat[2][1] =-1 * sin( degreeX );
+				rotaXMat[1][2] = sin( degreeX );
+				rotaXMat[2][2] = cos( degreeX );
+				break;		
+			case Y_AXIS:
+				degreeY += 0.05;
+				rotaYMat[0][0] = cos( degreeY );
+				rotaYMat[0][2] =-1 * sin( degreeY );
+				rotaYMat[2][0] = sin( degreeY );
+				rotaYMat[2][2] = cos( degreeY );
+				break;		
+			case Z_AXIS:
+				degreeZ += 0.05;
+				rotaZMat[0][0] = cos( degreeZ );
+				rotaZMat[1][0] =-1 * sin( degreeZ );
+				rotaZMat[0][1] = sin( degreeZ );
+				rotaZMat[1][1] = cos( degreeZ );
+				break;		
+			}
+			break;
+		}//End of selectMode switch
 		break;
 	case SDLK_DOWN:
-		switch( selectAxis ){
-		case X_AXIS:	matrix[0][3] -= 0.05;	break;
-		case Y_AXIS:	matrix[1][3] -= 0.05;	break;
-		case Z_AXIS:	matrix[2][3] -= 0.05;	break;
-		}
+		switch( selectMode ){
+		case TRANSLATE:
+			switch( selectAxis ){
+			case X_AXIS:	modelMat[3][0] -= 0.05;	break;
+			case Y_AXIS:	modelMat[3][1] -= 0.05;	break;
+			case Z_AXIS:	modelMat[3][2] -= 0.05;	break;
+			}
+			break;
+		case SCALE:
+			switch( selectAxis ){
+			case X_AXIS:	modelMat[0][0] -= 0.05;	break;
+			case Y_AXIS:	modelMat[1][1] -= 0.05;	break;
+			case Z_AXIS:	modelMat[2][2] -= 0.05;	break;
+			}
+			break;
+		case ROTATE:
+			switch( selectAxis ){
+			case X_AXIS:
+				degreeX -= 0.05;
+				rotaXMat[1][1] = cos( degreeX );
+				rotaXMat[2][1] =-1 * sin( degreeX );
+				rotaXMat[1][2] = sin( degreeX );
+				rotaXMat[2][2] = cos( degreeX );
+				break;		
+			case Y_AXIS:
+				degreeY -= 0.05;
+				rotaYMat[0][0] = cos( degreeY );
+				rotaYMat[0][2] =-1 * sin( degreeY );
+				rotaYMat[2][0] = sin( degreeY );
+				rotaYMat[2][2] = cos( degreeY );
+				break;		
+			case Z_AXIS:
+				degreeZ -= 0.05;
+				rotaZMat[0][0] = cos( degreeZ );
+				rotaZMat[1][0] =-1 * sin( degreeZ );
+				rotaZMat[0][1] = sin( degreeZ );
+				rotaZMat[1][1] = cos( degreeZ );
+				break;		
+			}
+			break;
+		}//End of selectMode switch
 		break;
 	}
 }
@@ -263,7 +387,12 @@ int main ( int argc, char* argv[] )
 	SDL_Event event;
 	bool quit = false;
 
-	uniTrans = glGetUniformLocation( shaderProgram, "trans" );
+	uniRotaX = glGetUniformLocation( shaderProgram, "rotaX" );
+	uniRotaY = glGetUniformLocation( shaderProgram, "rotaY" );
+	uniRotaZ = glGetUniformLocation( shaderProgram, "rotaZ" );
+	uniModel = glGetUniformLocation( shaderProgram, "model" );
+	uniView = glGetUniformLocation( shaderProgram, "view" );
+	uniProj = glGetUniformLocation( shaderProgram, "proj" );
 	
 	while( quit == false ){
 		
