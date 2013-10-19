@@ -35,30 +35,37 @@ enum AXIS{ X_AXIS, Y_AXIS, Z_AXIS };
 enum MODE{ ROTATE, TRANSLATE, SCALE };
 int selectAxis = X_AXIS;
 int selectMode = ROTATE;
+GLuint uniReflectX;
 GLuint elements[] = {
-	0, 1,	
-	1, 2,
-	2, 3,
-	3, 0,
-	4, 5,
-	5, 6,
-	6, 7,
-	7, 4,
-	0, 4,
-	1, 5,
-	2, 6,
-	3, 7
+	0, 1, 2, 3,
+	4, 5, 6, 7,
+	1, 2, 5, 5
 };
+//
+//GLuint elements[] = {
+//	0, 1,	
+//	1, 2,
+//	2, 3,
+//	3, 0,
+//	4, 5,
+//	5, 6,
+//	6, 7,
+//	7, 4,
+//	0, 4,
+//	1, 5,
+//	2, 6,
+//	3, 7
+//};
 
 GLfloat triangle[] = {
 	1.0, 1.0, 1.0, 1.0, 0.0, 0.0,
-	-1.0, 1.0, 1.0, 1.0, 0.0, 0.0,
-	-1.0,-1.0, 1.0, 1.0, 0.0, 0.0,
-	1.0,-1.0, 1.0, 1.0, 0.0, 0.0,
-	1.0, 1.0,-1.0, 0.0, 1.0, 0.0,
-	-1.0, 1.0,-1.0, 0.0, 1.0, 0.0,
-	-1.0,-1.0,-1.0, 0.0, 1.0, 0.0,
-	1.0,-1.0,-1.0, 0.0, 1.0, 0.0
+	-1.0, 1.0, 1.0, 0.0, 1.0, 0.0,
+	-1.0,-1.0, 1.0, 0.0, 0.0, 1.0,
+	1.0,-1.0, 1.0, 1.0, 1.0, 0.0,
+	1.0, 1.0,-1.0, 0.0, 1.0, 1.0,
+	-1.0, 1.0,-1.0, 1.0, 0.0, 1.0,
+	-1.0,-1.0,-1.0, 0.5, 0.8, 0.5,
+	1.0,-1.0,-1.0, 0.3, 1.0, 0.4
 };
 
 GLuint uniRotaX;
@@ -101,7 +108,7 @@ float viewMat[][ 4 ] = {
 		{ 1, 0, 0, 0 },
 		{ 0, 1, 0, 0 },
 		{ 0, 0, 1, 0 },
-		{ 0, 0, 0, 1 }
+		{ 0, 0, 3, 1 }
 };	
 
 GLuint uniProj;
@@ -126,6 +133,11 @@ string loadShaderSource( string filePath )
 
 	return buffer.str();
 }	
+
+bool loadOBJ( string path, float vertex, float normal )
+{
+	
+}
 	
 bool init ()
 {	
@@ -201,6 +213,10 @@ bool init ()
 	//Setup the clear color
 	glClearColor( 0.0f, 0.0f, 0.0f, 1.0f );	
 
+	//Setup depth 
+	glEnable( GL_DEPTH_TEST );
+	glDepthFunc( GL_LESS );
+
 	//Setup viewport and othometric
 	glViewport( 0, 0, SCREEN_WIDTH, SCREEN_HEIGHT );
 		
@@ -238,10 +254,10 @@ bool init ()
 void draw ()
 {
 	//Clear the screen
-	glClear( GL_COLOR_BUFFER_BIT );
+	glClear( GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT );
 	
 	//Draw a triangle from the three vertices
-	glDrawElements( GL_LINES, 24, GL_UNSIGNED_INT, 0 );		//Load 3 indices to draw, the data type is GLuint, and there is no offset
+	glDrawElements( GL_QUADS, 4*6, GL_UNSIGNED_INT, 0 );		//Load 3 indices to draw, the data type is GLuint, and there is no offset
 
 	//Swap window
 	SDL_GL_SwapWindow( glWindow );			
@@ -252,6 +268,7 @@ void update ()
 	glUniformMatrix4fv( uniRotaX, 1, GL_FALSE, (GLfloat*)rotaXMat );
 	glUniformMatrix4fv( uniRotaY, 1, GL_FALSE, (GLfloat*)rotaYMat );
 	glUniformMatrix4fv( uniRotaZ, 1, GL_FALSE, (GLfloat*)rotaZMat );
+
 	glUniformMatrix4fv( uniModel, 1, GL_FALSE, (GLfloat*)modelMat );
 	glUniformMatrix4fv( uniView, 1, GL_FALSE, (GLfloat*)viewMat );
 	glUniformMatrix4fv( uniProj, 1, GL_FALSE, (GLfloat*)projMat );
@@ -289,6 +306,10 @@ void eventHandler( int key )
 	case SDLK_s:	selectMode = SCALE;	break;
 	case SDLK_r:	selectMode = ROTATE;	break;
 	case SDLK_t:	selectMode = TRANSLATE;	break;
+
+	case SDLK_KP_1:	viewMat[0][0] *= -1;	break;
+	case SDLK_KP_2:	viewMat[1][1] *= -1;	break;
+	case SDLK_KP_3:	viewMat[2][2] *= -1;	break;
 		
 	case SDLK_UP:
 		switch( selectMode ){
