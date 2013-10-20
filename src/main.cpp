@@ -4,6 +4,7 @@ main.cpp
 #include <iostream>
 #include <sstream>
 #include <fstream>
+#include <vector>
 #include <GL/glew.h>
 #include <SDL2/SDL.h>
 #include <SDL2/SDL_opengl.h>
@@ -23,6 +24,7 @@ SDL_Window *glWindow = NULL;
 SDL_GLContext glContext;
 
 GLuint vbo;		//Vertex Buffer Object
+GLuint normalBuffer;	//Normal buffer
 GLuint vao;		//Vertex Array Object
 GLuint ebo;		//Element Buffer Object
 GLuint vertexShader;	
@@ -33,9 +35,12 @@ GLuint colAttrib;	//Color Attribute
 
 enum AXIS{ X_AXIS, Y_AXIS, Z_AXIS };
 enum MODE{ ROTATE, TRANSLATE, SCALE };
+
 int selectAxis = X_AXIS;
 int selectMode = ROTATE;
+
 GLuint uniReflectX;
+
 GLuint elements[] = {
 	0, 1, 2, 3,
 	4, 5, 6, 7,
@@ -119,12 +124,12 @@ float projMat[][ 4 ] = {
 		{ 0, 0, 0, 1 }
 };	
 
-string loadShaderSource( string filePath )
+string loadShaderSource ( string filePath )
 {
 	ifstream source( filePath.c_str(), ios::in );
 	if( !source.good() ){
 		cout << "File open failed: " << filePath << endl;
-		exit( 1 );
+		return "";
 	}
 	
 	stringstream buffer;
@@ -134,9 +139,43 @@ string loadShaderSource( string filePath )
 	return buffer.str();
 }	
 
-bool loadOBJ( string path, float vertex, float normal )
+bool loadOBJ ( string filePath, vector <GLfloat> *vertex, vector <GLuint> *element )
 {
+	ifstream OBJsoruce( filePath.c_str(), ios::in );
+	if( !OBJsoruce.good() ){
+		cout << "OBJ file load failed: " << filePath << endl;
+		return false;
+	} 
+
+	string strTmp;
+	while( getline( OBJsoruce, strTmp ) ){
+		if( strTmp.find( "v" ) == 0 ){
+			float x, y, z;	
+			sscanf( strTmp.c_str(), "%*s %f %f %f", &x, &y, &z );
+
+			vertex->push_back( x );
+			vertex->push_back( y );
+			vertex->push_back( z );
+		}
+		
+		else if( strTmp.find( "f" ) == 0 ){
+			int vertex1, vertex2, vertex3;
+			int normal1, normal2, normal3;
+			sscanf( strTmp.c_str(), "%*s %d//%d %d//%d %d//%d", &vertex1, &normal1, &vertex2, &normal2, &vertex3, &normal3 );
+
+			element->push_back( vertex1 - 1 );			
+			element->push_back( vertex2 - 1 );			
+			element->push_back( vertex3 - 1 );			
+
+			//normal.push_back( normal1 );
+			//normal.push_back( normal2 );
+			//normal.push_back( normal3 );
+		}	
+	}
+
 	
+
+	return true;
 }
 	
 bool init ()
@@ -162,19 +201,34 @@ bool init ()
 	glBindVertexArray( vao );
 
 	//Generate a VertexBufferObject and store the vertec data in it
+	vector <GLfloat> vertex;
+	vector <GLfloat> nornaml;
+	vector <GLuint> element;
+
+	if( loadOBJ( "monkey.obj", &vertex, &element ) == false )	return false;	//Load vertex and normal form OBJ file
+
 	glGenBuffers( 1, &vbo );
 	glBindBuffer( GL_ARRAY_BUFFER, vbo );
-	glBufferData( GL_ARRAY_BUFFER, sizeof( triangle ), triangle, GL_STATIC_DRAW );
+	glBufferData( GL_ARRAY_BUFFER,
+			vertex.size() * sizeof( GLfloat ),
+			&vertex[ 0 ],
+			GL_STATIC_DRAW
+			);
 
 	//Generate a ElementBufferObject and store the element date in it
 	glGenBuffers( 1, &ebo );
 	glBindBuffer( GL_ELEMENT_ARRAY_BUFFER, ebo );
-	glBufferData( GL_ELEMENT_ARRAY_BUFFER, sizeof( elements ), elements, GL_STATIC_DRAW );	
+	glBufferData( GL_ELEMENT_ARRAY_BUFFER,
+			element.size() * sizeof( GLuint ),
+			&element[ 0 ],
+			GL_STATIC_DRAW
+			);	
 
 
 	/*SHADERS*/
 	//Create and compile vertex shader
 	string str = loadShaderSource( "shader/vertexShader" );
+	if( str == "" )	return false;
 	vertexShader = glCreateShader( GL_VERTEX_SHADER );
 	glShaderSource( vertexShader,
 			 1,
@@ -185,6 +239,7 @@ bool init ()
 
 	//Create and compile fragment shader
 	str = loadShaderSource( "shader/fragmentShader" );
+	if( str == "" )	return false;
 	fragmentShader = glCreateShader( GL_FRAGMENT_SHADER );
 	glShaderSource( fragmentShader,
 			1,
@@ -204,11 +259,7 @@ bool init ()
 	//Specity the layout of the vertex data			NEED MORE STUDY!!!
 	posAttrib = glGetAttribLocation( shaderProgram, "position" );		
 	glEnableVertexAttribArray( posAttrib );
-	glVertexAttribPointer( posAttrib, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(GLfloat), 0 );
-
-	colAttrib = glGetAttribLocation( shaderProgram, "color" );
-	glEnableVertexAttribArray( colAttrib );
-	glVertexAttribPointer( colAttrib, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(GLfloat), (void*)( 3 * sizeof(GLfloat) ) );
+	glVertexAttribPointer( posAttrib, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(GLfloat), 0 );
 
 	//Setup the clear color
 	glClearColor( 0.0f, 0.0f, 0.0f, 1.0f );	
@@ -257,7 +308,7 @@ void draw ()
 	glClear( GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT );
 	
 	//Draw a triangle from the three vertices
-	glDrawElements( GL_QUADS, 4*6, GL_UNSIGNED_INT, 0 );		//Load 3 indices to draw, the data type is GLuint, and there is no offset
+	glDrawElements( GL_TRIANGLES, 1000, GL_UNSIGNED_INT, 0 );		//Load 3 indices to draw, the data type is GLuint, and there is no offset
 
 	//Swap window
 	SDL_GL_SwapWindow( glWindow );			
@@ -296,7 +347,7 @@ void cleanUp ()
 	SDL_Quit();
 }
 
-void eventHandler( int key )
+void eventHandler ( int key )
 {
 	switch( key ){
 
@@ -419,6 +470,7 @@ int main ( int argc, char* argv[] )
 	uniModel = glGetUniformLocation( shaderProgram, "model" );
 	uniView = glGetUniformLocation( shaderProgram, "view" );
 	uniProj = glGetUniformLocation( shaderProgram, "proj" );
+
 	
 	while( quit == false ){
 		

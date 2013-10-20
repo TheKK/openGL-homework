@@ -2,11 +2,14 @@
 2.rotation	
 3.revolution
 4.scale		done!
-5.reflection
+5.reflection	done!
 6.shear
+7.OBJ loader	done!
+8.user guide
+9.perspective view 	done!
 
 TODO:
-*make a OBJ loader
+*try to load texture from OBJ loader
 
 *search more about rotation, to make rotation and revolution function work correctly
 
