@@ -31,47 +31,12 @@ GLuint vertexShader;
 GLuint fragmentShader;
 GLuint shaderProgram;
 GLuint posAttrib;	//Position Attribute
-GLuint colAttrib;	//Color Attribute
 
 enum AXIS{ X_AXIS, Y_AXIS, Z_AXIS };
 enum MODE{ ROTATE, TRANSLATE, SCALE };
 
 int selectAxis = X_AXIS;
 int selectMode = ROTATE;
-
-GLuint uniReflectX;
-
-GLuint elements[] = {
-	0, 1, 2, 3,
-	4, 5, 6, 7,
-	1, 2, 6, 5
-};
-//
-//GLuint elements[] = {
-//	0, 1,	
-//	1, 2,
-//	2, 3,
-//	3, 0,
-//	4, 5,
-//	5, 6,
-//	6, 7,
-//	7, 4,
-//	0, 4,
-//	1, 5,
-//	2, 6,
-//	3, 7
-//};
-
-GLfloat triangle[] = {
-	1.0, 1.0, 1.0, 1.0, 0.0, 0.0,
-	-1.0, 1.0, 1.0, 0.0, 1.0, 0.0,
-	-1.0,-1.0, 1.0, 0.0, 0.0, 1.0,
-	1.0,-1.0, 1.0, 1.0, 1.0, 0.0,
-	1.0, 1.0,-1.0, 0.0, 1.0, 1.0,
-	-1.0, 1.0,-1.0, 1.0, 0.0, 1.0,
-	-1.0,-1.0,-1.0, 0.5, 0.8, 0.5,
-	1.0,-1.0,-1.0, 0.3, 1.0, 0.4
-};
 
 GLuint uniRotaX;
 float degreeX = 0;
@@ -125,28 +90,33 @@ float projMat[][ 4 ] = {
 };	
 
 string loadShaderSource ( string filePath )
-{
+{	
+	//Create file stream and check if there is an error
 	ifstream source( filePath.c_str(), ios::in );
 	if( !source.good() ){
 		cout << "File open failed: " << filePath << endl;
 		return "";
 	}
-	
+
+	//Stream the file date into stringstream buffer	
 	stringstream buffer;
 	buffer << source.rdbuf();
 	source.close();
 
+	//Return the pointer of the string
 	return buffer.str();
 }	
 
 bool loadOBJ ( string filePath, vector <GLfloat> *vertex, vector <GLuint> *element )
-{
+{	
+	//Create a file stream and check if there is an error
 	ifstream OBJsoruce( filePath.c_str(), ios::in );
 	if( !OBJsoruce.good() ){
 		cout << "OBJ file load failed: " << filePath << endl;
 		return false;
 	} 
 
+	//Load line by line and search keyword to identify the data type( vertex or normal or ETC )
 	string strTmp;
 	while( getline( OBJsoruce, strTmp ) ){
 		if( strTmp.find( "v" ) == 0 ){
@@ -172,8 +142,6 @@ bool loadOBJ ( string filePath, vector <GLfloat> *vertex, vector <GLuint> *eleme
 			//normal.push_back( normal3 );
 		}	
 	}
-
-	
 
 	return true;
 }
@@ -205,7 +173,8 @@ bool init ()
 	vector <GLfloat> nornaml;
 	vector <GLuint> element;
 
-	if( loadOBJ( "monkey.obj", &vertex, &element ) == false )	return false;	//Load vertex and normal form OBJ file
+	//Load data from OBJ file
+	if( loadOBJ( "monkey.obj", &vertex, &element ) == false )	return false;	
 
 	glGenBuffers( 1, &vbo );
 	glBindBuffer( GL_ARRAY_BUFFER, vbo );
@@ -230,11 +199,11 @@ bool init ()
 	string str = loadShaderSource( "shader/vertexShader" );
 	if( str == "" )	return false;
 	vertexShader = glCreateShader( GL_VERTEX_SHADER );
-	glShaderSource( vertexShader,
-			 1,
-			(const GLchar**)&str,
-			NULL
-			);		// "1" mean there is only one char array for your source, "NULL" mean the array terminate at NULL character
+	glShaderSource( vertexShader,		//Shader type
+			 1,			//Number of arrays to load
+			(const GLchar**)&str,	//Path of the array
+			NULL			//When loaded "NULL", terminate loading array
+			);
 	glCompileShader( vertexShader );
 
 	//Create and compile fragment shader
@@ -245,7 +214,7 @@ bool init ()
 			1,
 			(const GLchar**)&str,
 			NULL
-			);			//same as the vertex shader
+			);
 	glCompileShader( fragmentShader );
 
 	//Link the vertex and fragment shader into a shader program
@@ -262,9 +231,9 @@ bool init ()
 	glVertexAttribPointer( posAttrib, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(GLfloat), 0 );
 
 	//Setup the clear color
-	glClearColor( 0.0f, 0.0f, 0.0f, 1.0f );	
+	glClearColor( 0.0f, 0.0f, 0.2f, 1.0f );	
 
-	//Setup depth 
+	//Enable depth cleaner
 	glEnable( GL_DEPTH_TEST );
 	glDepthFunc( GL_LESS );
 
@@ -316,6 +285,7 @@ void draw ()
 
 void update ()
 {
+	//Update the matrixes
 	glUniformMatrix4fv( uniRotaX, 1, GL_FALSE, (GLfloat*)rotaXMat );
 	glUniformMatrix4fv( uniRotaY, 1, GL_FALSE, (GLfloat*)rotaYMat );
 	glUniformMatrix4fv( uniRotaZ, 1, GL_FALSE, (GLfloat*)rotaZMat );
@@ -410,6 +380,7 @@ void eventHandler ( int key )
 			break;
 		}//End of selectMode switch
 		break;
+
 	case SDLK_DOWN:
 		switch( selectMode ){
 		case TRANSLATE:
@@ -464,6 +435,7 @@ int main ( int argc, char* argv[] )
 	SDL_Event event;
 	bool quit = false;
 
+	//Get the uniform location to change their values
 	uniRotaX = glGetUniformLocation( shaderProgram, "rotaX" );
 	uniRotaY = glGetUniformLocation( shaderProgram, "rotaY" );
 	uniRotaZ = glGetUniformLocation( shaderProgram, "rotaZ" );
@@ -482,7 +454,7 @@ int main ( int argc, char* argv[] )
 			if( event.type == SDL_QUIT )	quit = true;
 			if( event.type == SDL_KEYDOWN )	eventHandler( event.key.keysym.sym );
 		}		
-		
+	
 		update();
 
 		draw();
