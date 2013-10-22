@@ -5,6 +5,9 @@ in vec3 position;
 out vec3 Color;
 
 uniform mat4 rota; 
+uniform mat4 revoX;
+uniform mat4 revoY;
+uniform mat4 revoZ;
 uniform mat4 model;	//Model matrix
 uniform mat4 view;	//View( camera ) matrix
 uniform mat4 proj;	//Projection matrix
@@ -16,6 +19,6 @@ void main () {
 	if( position.z < 0 )	Color = vec3( 0.0, 1.0, 1.0 );
 	if( position.x > 0 )	Color = vec3( 0.0, 1.0, 0.2 );
 
-	gl_Position = viewport *  proj * view * model * rota * vec4( position , 1.0 );
+	gl_Position = viewport * proj * view * revoX * revoY * revoZ * model * rota * vec4( position , 1.0 );
 };
 

@@ -35,17 +35,11 @@ GLuint shaderProgram;
 GLuint posAttrib;	//Position Attribute
 
 enum AXIS{ X_AXIS, Y_AXIS, Z_AXIS };
-enum MODE{ ROTATE, TRANSLATE, SCALE };
+enum MODE{ ROTATE, ROTATE_AXIS, TRANSLATE, SCALE };
 
 int selectAxis = X_AXIS;
 int selectMode = ROTATE;
 
-GLuint uniDegreeX;	
-GLuint uniDegreeY;
-GLuint uniDegreeZ;
-float degreeX;
-float degreeY;
-float degreeZ;
 
 GLuint uniRota;
 float rotaMat[][4] = {
@@ -55,14 +49,33 @@ float rotaMat[][4] = {
 		{ 0, 0, 0, 1 }
 };	
 
-GLuint uniRevo;
-float revoMat[][4] = {
+GLuint uniRevoX;
+float degreeX = 0;
+float revoXMat[][4] = {
 		{ 1, 0, 0, 0 },
 		{ 0, 1, 0, 0 },
 		{ 0, 0, 1, 0 },
 		{ 0, 0, 0, 1 }
 };	
 
+GLuint uniRevoY;
+float degreeY = 0;
+float revoYMat[][4] = {
+		{ 1, 0, 0, 0 },
+		{ 0, 1, 0, 0 },
+		{ 0, 0, 1, 0 },
+		{ 0, 0, 0, 1 }
+};	
+
+GLuint uniRevoZ;
+float degreeZ = 0;
+float revoZMat[][4] = {
+		{ 1, 0, 0, 0 },
+		{ 0, 1, 0, 0 },
+		{ 0, 0, 1, 0 },
+		{ 0, 0, 0, 1 }
+};	
+		
 GLuint uniModel;
 float modelMat[][ 4 ] = {
 		{ 1, 0, 0, 0 },
@@ -166,7 +179,7 @@ bool loadOBJ ( string filePath, vector <GLfloat> *vertex, vector <GLuint> *eleme
 	return true;
 }
 
-void setOrtho ( int left, int right, int bottom, int top, int near, int far )
+void setOrtho ( float left, float right, float bottom, float top, float near, float far )
 {	
 	projMat[0][0] = 2.0 / ( right - left );
 	projMat[1][1] = 2.0 / ( top - bottom );
@@ -424,8 +437,10 @@ void draw ()
 void update ()
 {
 	//Update the matrixes
+	glUniformMatrix4fv( uniRevoX, 1, GL_TRUE, (GLfloat*)revoXMat );
+	glUniformMatrix4fv( uniRevoY, 1, GL_TRUE, (GLfloat*)revoYMat );
+	glUniformMatrix4fv( uniRevoZ, 1, GL_TRUE, (GLfloat*)revoZMat );
 	glUniformMatrix4fv( uniRota, 1, GL_TRUE, (GLfloat*)rotaMat );
-	glUniformMatrix4fv( uniRevo, 1, GL_FALSE, (GLfloat*)revoMat );
 
 	//GL_TRUE means to transpose the matrix before applying, because matrix in GLSL is column major
 	glUniformMatrix4fv( uniModel, 1, GL_TRUE, (GLfloat*)modelMat );
@@ -466,9 +481,10 @@ void eventHandler ( int key )
 	case SDLK_z:	selectAxis = Z_AXIS;	break;
 
 	//Change mode	
-	case SDLK_s:	selectMode = SCALE;	break;
-	case SDLK_r:	selectMode = ROTATE;	break;
-	case SDLK_t:	selectMode = TRANSLATE;	break;
+	case SDLK_s:	selectMode = SCALE;		break;
+	case SDLK_r:	selectMode = ROTATE;		break;
+	case SDLK_v:	selectMode = ROTATE_AXIS;	break;
+	case SDLK_t:	selectMode = TRANSLATE;		break;
 
 	//Reflection
 	case SDLK_KP_1:	modelMat[0][0] *= -1;	break;
@@ -486,11 +502,13 @@ void eventHandler ( int key )
 			windowed = true;
 		}	
 		break;	
+
 	//Change the projection mode
 	case SDLK_KP_5:	
 		if( projMat[3][2] == 0 )	projMat[3][2] = 1;	
 		else	projMat[3][2] = 0;
 		break;
+
 	//Increase or decrease the value	
 	case SDLK_UP:
 		switch( selectMode ){
@@ -518,6 +536,31 @@ void eventHandler ( int key )
 				rotationZ( 0.1 );	break;		
 			}
 			break;
+		case ROTATE_AXIS:
+			switch( selectAxis ){
+			case X_AXIS:
+				degreeX += 0.05;
+				revoXMat[1][1] = cos( degreeX );
+				revoXMat[2][1] = sin( degreeX );
+				revoXMat[1][2] = -1 * sin( degreeX );
+				revoXMat[2][2] = cos( degreeX );
+				break;
+			case Y_AXIS:
+				degreeY += 0.05;
+				revoYMat[0][0] = cos( degreeY );
+				revoYMat[2][0] = -1 * sin( degreeY );
+				revoYMat[0][2] = sin( degreeY );
+				revoYMat[2][2] = cos( degreeY );
+				break;
+			case Z_AXIS:
+				degreeZ += 0.05;
+				revoZMat[0][0] = cos( degreeZ );
+				revoZMat[1][0] = sin( degreeZ );
+				revoZMat[0][1] = -1 * sin( degreeZ );
+				revoZMat[1][1] = cos( degreeZ );
+				break;
+			}
+			break;	
 		}//End of selectMode switch
 		break;
 
@@ -547,6 +590,31 @@ void eventHandler ( int key )
 				rotationZ(-0.1 );	break;		
 			}
 			break;
+		case ROTATE_AXIS:
+			switch( selectAxis ){
+			case X_AXIS:
+				degreeX -= 0.05;
+				revoXMat[1][1] = cos( degreeX );
+				revoXMat[2][1] = sin( degreeX );
+				revoXMat[1][2] = -1 * sin( degreeX );
+				revoXMat[2][2] = cos( degreeX );
+				break;
+			case Y_AXIS:
+				degreeY -= 0.05;
+				revoYMat[0][0] = cos( degreeY );
+				revoYMat[2][0] = -1 * sin( degreeY );
+				revoYMat[0][2] = sin( degreeY );
+				revoYMat[2][2] = cos( degreeY );
+				break;
+			case Z_AXIS:
+				degreeZ -= 0.05;
+				revoZMat[0][0] = cos( degreeZ );
+				revoZMat[1][0] = sin( degreeZ );
+				revoZMat[0][1] = -1 * sin( degreeZ );
+				revoZMat[1][1] = cos( degreeZ );
+				break;
+			}
+			break;
 		}//End of selectMode switch
 		break;
 	}
@@ -557,15 +625,18 @@ int main ( int argc, char* argv[] )
 	if( init() == false )	return 1;
 
 	Timer fps;
+	int cameraVolum = 2;
 	SDL_Event event;
 	bool quit = false;
 
 	//Get the uniform location to change their values
+	uniRevoX = glGetUniformLocation( shaderProgram, "revoX" );
+	uniRevoY = glGetUniformLocation( shaderProgram, "revoY" );
+	uniRevoZ = glGetUniformLocation( shaderProgram, "revoZ" );
 	uniRota = glGetUniformLocation( shaderProgram, "rota" );
 	uniModel = glGetUniformLocation( shaderProgram, "model" );
 	uniView = glGetUniformLocation( shaderProgram, "view" );
 	uniProj = glGetUniformLocation( shaderProgram, "proj" );
-	uniRevo = glGetUniformLocation( shaderProgram, "revo" );
 	uniViewport = glGetUniformLocation( shaderProgram, "viewport" );
 
 	while( quit == false ){
@@ -579,8 +650,13 @@ int main ( int argc, char* argv[] )
 			else if( event.type == SDL_KEYDOWN )	eventHandler( event.key.keysym.sym );
 			else if( event.type == SDL_WINDOWEVENT && event.window.event == SDL_WINDOWEVENT_RESIZED )
 				windowResize( event.window.data1, event.window.data2 );
+
+			else if( event.type == SDL_MOUSEWHEEL ){
+				cameraVolum += event.wheel.y;
+				setOrtho(-1*cameraVolum, cameraVolum,-1*cameraVolum, cameraVolum,-1*cameraVolum, cameraVolum );
 			}
-	
+		}	
+
 		update();
 
 		draw();

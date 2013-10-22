@@ -1,6 +1,6 @@
-1.translate	done!
+1.translate	done!, but something wrong after revolution
 2.rotation	done!	
-3.revolution
+3.revolution	done!
 4.scale		done!
 5.reflection	done!
 6.shear
@@ -9,6 +9,8 @@
 9.perspective view 	done!
 
 TODO:
+***Shear
+
 ***viewport matrix
 
 ***clipling
