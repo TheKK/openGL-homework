@@ -11,6 +11,8 @@
 TODO:
 *about glDrawElements, how to get the number of indices?
 
+*viewport matrix
+
 *try to load texture from OBJ loader
 
 *search more about rotation, to make rotation and revolution function work correctly

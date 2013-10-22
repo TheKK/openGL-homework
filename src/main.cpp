@@ -37,7 +37,7 @@ enum MODE{ ROTATE, TRANSLATE, SCALE };
 
 int selectAxis = X_AXIS;
 int selectMode = ROTATE;
-
+	
 GLuint uniRotaX;
 float degreeX = 0;
 float rotaXMat[][ 4 ] = {
@@ -76,8 +76,8 @@ float modelMat[][ 4 ] = {
 GLuint uniView;
 float viewMat[][ 4 ] = {
 		{ 1, 0, 0, 0 },
-		{ 0, 1, 0, 0 },
-		{ 0, 0, 1, 0 },
+		{ 0, cos(-1.9),-sin(-1.9) , 0 },
+		{ 0, sin(-1.9), cos(-1.9) , 1000 },
 		{ 0, 0, 0, 1 }
 };	
 
@@ -85,9 +85,17 @@ GLuint uniProj;
 float projMat[][ 4 ] = {	
 		{ 1, 0, 0, 0 },
 		{ 0, 1, 0, 0 },
-		{ 0, 0, 1, 1 },
-		{ 0, 0, 0, 1 }
+		{ 0, 0, 1, 0 },	//Keep the z-axis value for depth test
+		{ 0, 0, 1, 1 }
 };	
+
+GLuint uniViewport;
+float viewportMat[][4] = {
+		{ 1, 0, 0, 0 },
+		{ 0, 1, 0, 0 },
+		{ 0, 0, 1, 0 },
+		{ 0, 0, 0, 1 }
+};
 
 string loadShaderSource ( string filePath )
 {	
@@ -145,6 +153,14 @@ bool loadOBJ ( string filePath, vector <GLfloat> *vertex, vector <GLuint> *eleme
 
 	return true;
 }
+
+void setViewport ( int x, int y, int width, int height )
+{
+	viewportMat[0][0] = width / 2;
+	viewportMat[1][1] = height / 2;
+	viewportMat[0][3] = x;
+	viewportMat[1][3] = y;
+}	
 	
 bool init ()
 {	
@@ -155,7 +171,7 @@ bool init ()
 	glWindow = SDL_CreateWindow( "OpenGL",
 				SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED,
 				SCREEN_WIDTH, SCREEN_HEIGHT,
-				SDL_WINDOW_OPENGL );
+				SDL_WINDOW_OPENGL | SDL_WINDOW_RESIZABLE );
 
 	//Create openGL context	
 	glContext = SDL_GL_CreateContext( glWindow );
@@ -231,14 +247,15 @@ bool init ()
 	glVertexAttribPointer( posAttrib, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(GLfloat), 0 );
 
 	//Setup the clear color
-	glClearColor( 0.0f, 0.0f, 0.2f, 1.0f );	
+	glClearColor( 0.8f, 0.8f, 0.2f, 1.0f );	
+
+	//Viewport
+	setViewport( 0, 0, SCREEN_WIDTH, SCREEN_HEIGHT );
 
 	//Enable depth cleaner
 	glEnable( GL_DEPTH_TEST );
 	glDepthFunc( GL_LESS );
 
-	//Setup viewport and othometric
-	glViewport( 0, 0, SCREEN_WIDTH, SCREEN_HEIGHT );
 		
 	//Check for error
 	GLint status;
@@ -271,13 +288,18 @@ bool init ()
 	return true;
 }
 
+void windowResize( int width, int height )
+{
+	setViewport( 0, 0, width, height );
+}
+
 void draw ()
 {
 	//Clear the screen
 	glClear( GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT );
 	
 	//Draw a triangle from the three vertices
-	glDrawElements( GL_TRIANGLES, 1000, GL_UNSIGNED_INT, 0 );		//Load 3 indices to draw, the data type is GLuint, and there is no offset
+	glDrawElements( GL_TRIANGLES, 2*3*6 + 6, GL_UNSIGNED_INT, 0 );		//Load 3 indices to draw, the data type is GLuint, and there is no offset
 
 	//Swap window
 	SDL_GL_SwapWindow( glWindow );			
@@ -290,9 +312,11 @@ void update ()
 	glUniformMatrix4fv( uniRotaY, 1, GL_FALSE, (GLfloat*)rotaYMat );
 	glUniformMatrix4fv( uniRotaZ, 1, GL_FALSE, (GLfloat*)rotaZMat );
 
-	glUniformMatrix4fv( uniModel, 1, GL_FALSE, (GLfloat*)modelMat );
-	glUniformMatrix4fv( uniView, 1, GL_FALSE, (GLfloat*)viewMat );
-	glUniformMatrix4fv( uniProj, 1, GL_FALSE, (GLfloat*)projMat );
+	//GL_TRUE means to transpose the matrix before applying, because matrix in GLSL is column major
+	glUniformMatrix4fv( uniModel, 1, GL_TRUE, (GLfloat*)modelMat );
+	glUniformMatrix4fv( uniView, 1, GL_TRUE, (GLfloat*)viewMat );
+	glUniformMatrix4fv( uniProj, 1, GL_TRUE, (GLfloat*)projMat );
+	glUniformMatrix4fv( uniViewport, 1, GL_TRUE, (GLfloat*)viewportMat );
 }
 
 void cleanUp ()	
@@ -336,14 +360,19 @@ void eventHandler ( int key )
 	case SDLK_KP_2:	viewMat[1][1] *= -1;	break;
 	case SDLK_KP_3:	viewMat[2][2] *= -1;	break;
 
+	//Change the projection mode
+	case SDLK_KP_5:	
+		if( projMat[3][2] == 1 )	projMat[3][2] = 0;	
+		else	projMat[3][2] = 1;
+		break;
 	//Increase or decrease the value	
 	case SDLK_UP:
 		switch( selectMode ){
 		case TRANSLATE:
 			switch( selectAxis ){
-			case X_AXIS:	modelMat[3][0] += 0.05;	break;
-			case Y_AXIS:	modelMat[3][1] += 0.05;	break;
-			case Z_AXIS:	modelMat[3][2] += 0.05;	break;
+			case X_AXIS:	modelMat[0][3] += 0.05;	break;
+			case Y_AXIS:	modelMat[1][3] += 0.05;	break;
+			case Z_AXIS:	modelMat[2][3] += 0.05;	break;
 			}
 			break;
 		case SCALE:
@@ -358,22 +387,22 @@ void eventHandler ( int key )
 			case X_AXIS:
 				degreeX += 0.05;
 				rotaXMat[1][1] = cos( degreeX );
-				rotaXMat[2][1] =-1 * sin( degreeX );
-				rotaXMat[1][2] = sin( degreeX );
+				rotaXMat[1][2] =-1 * sin( degreeX );
+				rotaXMat[2][1] = sin( degreeX );
 				rotaXMat[2][2] = cos( degreeX );
 				break;		
 			case Y_AXIS:
 				degreeY += 0.05;
 				rotaYMat[0][0] = cos( degreeY );
-				rotaYMat[0][2] =-1 * sin( degreeY );
-				rotaYMat[2][0] = sin( degreeY );
+				rotaYMat[2][0] =-1 * sin( degreeY );
+				rotaYMat[0][2] = sin( degreeY );
 				rotaYMat[2][2] = cos( degreeY );
 				break;		
 			case Z_AXIS:
 				degreeZ += 0.05;
 				rotaZMat[0][0] = cos( degreeZ );
-				rotaZMat[1][0] =-1 * sin( degreeZ );
-				rotaZMat[0][1] = sin( degreeZ );
+				rotaZMat[0][1] =-1 * sin( degreeZ );
+				rotaZMat[1][0] = sin( degreeZ );
 				rotaZMat[1][1] = cos( degreeZ );
 				break;		
 			}
@@ -385,9 +414,9 @@ void eventHandler ( int key )
 		switch( selectMode ){
 		case TRANSLATE:
 			switch( selectAxis ){
-			case X_AXIS:	modelMat[3][0] -= 0.05;	break;
-			case Y_AXIS:	modelMat[3][1] -= 0.05;	break;
-			case Z_AXIS:	modelMat[3][2] -= 0.05;	break;
+			case X_AXIS:	modelMat[0][3] -= 0.05;	break;
+			case Y_AXIS:	modelMat[1][3] -= 0.05;	break;
+			case Z_AXIS:	modelMat[2][3] -= 0.05;	break;
 			}
 			break;
 		case SCALE:
@@ -402,22 +431,22 @@ void eventHandler ( int key )
 			case X_AXIS:
 				degreeX -= 0.05;
 				rotaXMat[1][1] = cos( degreeX );
-				rotaXMat[2][1] =-1 * sin( degreeX );
-				rotaXMat[1][2] = sin( degreeX );
+				rotaXMat[1][2] =-1 * sin( degreeX );
+				rotaXMat[2][1] = sin( degreeX );
 				rotaXMat[2][2] = cos( degreeX );
 				break;		
 			case Y_AXIS:
 				degreeY -= 0.05;
 				rotaYMat[0][0] = cos( degreeY );
-				rotaYMat[0][2] =-1 * sin( degreeY );
-				rotaYMat[2][0] = sin( degreeY );
+				rotaYMat[2][0] =-1 * sin( degreeY );
+				rotaYMat[0][2] = sin( degreeY );
 				rotaYMat[2][2] = cos( degreeY );
 				break;		
 			case Z_AXIS:
 				degreeZ -= 0.05;
 				rotaZMat[0][0] = cos( degreeZ );
-				rotaZMat[1][0] =-1 * sin( degreeZ );
-				rotaZMat[0][1] = sin( degreeZ );
+				rotaZMat[0][1] =-1 * sin( degreeZ );
+				rotaZMat[1][0] = sin( degreeZ );
 				rotaZMat[1][1] = cos( degreeZ );
 				break;		
 			}
@@ -442,6 +471,7 @@ int main ( int argc, char* argv[] )
 	uniModel = glGetUniformLocation( shaderProgram, "model" );
 	uniView = glGetUniformLocation( shaderProgram, "view" );
 	uniProj = glGetUniformLocation( shaderProgram, "proj" );
+	uniViewport = glGetUniformLocation( shaderProgram, "viewport" );
 
 	
 	while( quit == false ){
@@ -453,6 +483,8 @@ int main ( int argc, char* argv[] )
 		while( SDL_PollEvent( &event ) ){
 			if( event.type == SDL_QUIT )	quit = true;
 			if( event.type == SDL_KEYDOWN )	eventHandler( event.key.keysym.sym );
+			if( event.type == SDL_WINDOWEVENT && event.window.event == SDL_WINDOWEVENT_RESIZED )
+				windowResize( event.window.data1, event.window.data2 );
 		}		
 	
 		update();

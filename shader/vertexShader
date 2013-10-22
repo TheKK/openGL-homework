@@ -10,9 +10,12 @@ uniform mat4 rotaZ;
 uniform mat4 model;	//Model matrix
 uniform mat4 view;	//View( camera ) matrix
 uniform mat4 proj;	//Projection matrix
+uniform mat4 viewport;	//Viewport matrix
 
 void main() {
-	Color = vec3( 1.0, 1.0, 1.0 );
-	gl_Position = proj * view * model * ( rotaX * rotaY * rotaZ ) * vec4( position / 4, 1.0 );
+	if( position.z > 0 )	Color = vec3( 1.0, 0.0, 0.0 );
+	if( position.z < 0 )	Color = vec3( 0.0, 1.0, 1.0 );
+	if( position.z == -1 )  Color = vec3( 0.0, 0.0, 0.0 );
+	gl_Position = viewport *  proj * view * model * ( rotaX * rotaY * rotaZ ) * vec4( position , 1.0 );
 };
 
