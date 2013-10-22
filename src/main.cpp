@@ -37,28 +37,16 @@ enum MODE{ ROTATE, TRANSLATE, SCALE };
 
 int selectAxis = X_AXIS;
 int selectMode = ROTATE;
-	
-GLuint uniRotaX;
-float degreeX = 0;
-float rotaXMat[][ 4 ] = {
-		{ 1, 0, 0, 0 },
-		{ 0, 1, 0, 0 },
-		{ 0, 0, 1, 0 },
-		{ 0, 0, 0, 1 }
-};	
 
-GLuint uniRotaY;
-float degreeY = 0;
-float rotaYMat[][ 4 ] = {
-		{ 1, 0, 0, 0 },
-		{ 0, 1, 0, 0 },
-		{ 0, 0, 1, 0 },
-		{ 0, 0, 0, 1 }
-};	
+GLuint uniDegreeX;	
+GLuint uniDegreeY;
+GLuint uniDegreeZ;
+float degreeX;
+float degreeY;
+float degreeZ;
 
-GLuint uniRotaZ;
-float degreeZ = 0;
-float rotaZMat[][ 4 ] = {
+GLuint uniRevo;
+float revoMat[][4] = {
 		{ 1, 0, 0, 0 },
 		{ 0, 1, 0, 0 },
 		{ 0, 0, 1, 0 },
@@ -76,8 +64,22 @@ float modelMat[][ 4 ] = {
 GLuint uniView;
 float viewMat[][ 4 ] = {
 		{ 1, 0, 0, 0 },
-		{ 0, cos(-1.9),-sin(-1.9) , 0 },
-		{ 0, sin(-1.9), cos(-1.9) , 1000 },
+		{ 0, 0,-1, 0 },
+		{ 0, 1, 0 ,0 },
+		{ 0, 0, 0, 1 }
+};	
+
+float viewMat2[][ 4 ] = {
+		{ 1, 0, 0, 0 },
+		{ 0,-1, 0, 0 },
+		{ 0, 0, 1, 0 },
+		{ 0, 0, 0, 1 }
+};	
+
+float viewMat3[][ 4 ] = {
+		{ 0, 0, 1, 0 },
+		{ 0, 1, 0, 0 },
+		{-1, 0, 0, 0 },
 		{ 0, 0, 0, 1 }
 };	
 
@@ -86,7 +88,7 @@ float projMat[][ 4 ] = {
 		{ 1, 0, 0, 0 },
 		{ 0, 1, 0, 0 },
 		{ 0, 0, 1, 0 },	//Keep the z-axis value for depth test
-		{ 0, 0, 1, 1 }
+		{ 0, 0, 0, 1 }
 };	
 
 GLuint uniViewport;
@@ -154,6 +156,17 @@ bool loadOBJ ( string filePath, vector <GLfloat> *vertex, vector <GLuint> *eleme
 	return true;
 }
 
+void setOrtho ( int left, int right, int bottom, int top, int near, int far )
+{	
+	projMat[0][0] = 2.0 / ( right - left );
+	projMat[1][1] = 2.0 / ( top - bottom );
+	projMat[2][2] = 2.0 / ( near - far );
+	
+	projMat[0][3] =-1.0 * ( right + left ) / ( right - left );
+	projMat[1][3] =-1.0 * ( top + bottom ) /	( top - bottom );
+	projMat[2][3] = 1.0 *( near + far ) / ( near - far );	
+}
+
 void setViewport ( int x, int y, int width, int height )
 {
 	viewportMat[0][0] = width / 2;
@@ -161,7 +174,13 @@ void setViewport ( int x, int y, int width, int height )
 	viewportMat[0][3] = x;
 	viewportMat[1][3] = y;
 }	
-	
+
+//void rotation ( int axis, float degree )
+//{
+//	switch( axis ){
+//	case X_AXIS:
+//	}
+//}
 bool init ()
 {	
 	//Initiralize SDL subsystem
@@ -249,8 +268,8 @@ bool init ()
 	//Setup the clear color
 	glClearColor( 0.8f, 0.8f, 0.2f, 1.0f );	
 
-	//Viewport
-	setViewport( 0, 0, SCREEN_WIDTH, SCREEN_HEIGHT );
+	//Setup ortho	
+	setOrtho( -2, 2, -2, 2, -2, 2 );
 
 	//Enable depth cleaner
 	glEnable( GL_DEPTH_TEST );
@@ -299,7 +318,16 @@ void draw ()
 	glClear( GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT );
 	
 	//Draw a triangle from the three vertices
-	glDrawElements( GL_TRIANGLES, 2*3*6 + 6, GL_UNSIGNED_INT, 0 );		//Load 3 indices to draw, the data type is GLuint, and there is no offset
+	glViewport( 0, 0, SCREEN_WIDTH, SCREEN_HEIGHT );
+	glDrawElements( GL_TRIANGLES, 2*3*6, GL_UNSIGNED_INT, 0 );		//Load 3 indices to draw, the data type is GLuint, and there is no offset
+
+	glViewport( 10, 10, 100, 100 );
+	glUniformMatrix4fv( uniView, 1, GL_TRUE, (GLfloat*)viewMat2 );
+	glDrawElements( GL_TRIANGLES, 2*3*6, GL_UNSIGNED_INT, 0 );
+
+	glViewport( 10, 500, 100, 100 );
+	glUniformMatrix4fv( uniView, 1, GL_TRUE, (GLfloat*)viewMat3 );
+	glDrawElements( GL_TRIANGLES, 2*3*6, GL_UNSIGNED_INT, 0 );
 
 	//Swap window
 	SDL_GL_SwapWindow( glWindow );			
@@ -308,9 +336,10 @@ void draw ()
 void update ()
 {
 	//Update the matrixes
-	glUniformMatrix4fv( uniRotaX, 1, GL_FALSE, (GLfloat*)rotaXMat );
-	glUniformMatrix4fv( uniRotaY, 1, GL_FALSE, (GLfloat*)rotaYMat );
-	glUniformMatrix4fv( uniRotaZ, 1, GL_FALSE, (GLfloat*)rotaZMat );
+	glUniform1f( uniDegreeX, degreeX );
+	glUniform1f( uniDegreeY, degreeY );
+	glUniform1f( uniDegreeZ, degreeZ );
+	glUniformMatrix4fv( uniRevo, 1, GL_FALSE, (GLfloat*)revoMat );
 
 	//GL_TRUE means to transpose the matrix before applying, because matrix in GLSL is column major
 	glUniformMatrix4fv( uniModel, 1, GL_TRUE, (GLfloat*)modelMat );
@@ -356,14 +385,14 @@ void eventHandler ( int key )
 	case SDLK_t:	selectMode = TRANSLATE;	break;
 
 	//Reflection
-	case SDLK_KP_1:	viewMat[0][0] *= -1;	break;
-	case SDLK_KP_2:	viewMat[1][1] *= -1;	break;
-	case SDLK_KP_3:	viewMat[2][2] *= -1;	break;
+	case SDLK_KP_1:	modelMat[0][0] *= -1;	break;
+	case SDLK_KP_2:	modelMat[1][1] *= -1;	break;
+	case SDLK_KP_3:	modelMat[2][2] *= -1;	break;
 
 	//Change the projection mode
 	case SDLK_KP_5:	
-		if( projMat[3][2] == 1 )	projMat[3][2] = 0;	
-		else	projMat[3][2] = 1;
+		if( projMat[3][2] == 0 )	projMat[3][2] = 1;	
+		else	projMat[3][2] = 0;
 		break;
 	//Increase or decrease the value	
 	case SDLK_UP:
@@ -385,26 +414,11 @@ void eventHandler ( int key )
 		case ROTATE:
 			switch( selectAxis ){
 			case X_AXIS:
-				degreeX += 0.05;
-				rotaXMat[1][1] = cos( degreeX );
-				rotaXMat[1][2] =-1 * sin( degreeX );
-				rotaXMat[2][1] = sin( degreeX );
-				rotaXMat[2][2] = cos( degreeX );
-				break;		
+				degreeX += 0.1;	break;		
 			case Y_AXIS:
-				degreeY += 0.05;
-				rotaYMat[0][0] = cos( degreeY );
-				rotaYMat[2][0] =-1 * sin( degreeY );
-				rotaYMat[0][2] = sin( degreeY );
-				rotaYMat[2][2] = cos( degreeY );
-				break;		
+				degreeY += 0.1;	break;		
 			case Z_AXIS:
-				degreeZ += 0.05;
-				rotaZMat[0][0] = cos( degreeZ );
-				rotaZMat[0][1] =-1 * sin( degreeZ );
-				rotaZMat[1][0] = sin( degreeZ );
-				rotaZMat[1][1] = cos( degreeZ );
-				break;		
+				degreeZ += 0.1;	break;		
 			}
 			break;
 		}//End of selectMode switch
@@ -429,26 +443,11 @@ void eventHandler ( int key )
 		case ROTATE:
 			switch( selectAxis ){
 			case X_AXIS:
-				degreeX -= 0.05;
-				rotaXMat[1][1] = cos( degreeX );
-				rotaXMat[1][2] =-1 * sin( degreeX );
-				rotaXMat[2][1] = sin( degreeX );
-				rotaXMat[2][2] = cos( degreeX );
-				break;		
+				degreeX -= 0.1;	break;		
 			case Y_AXIS:
-				degreeY -= 0.05;
-				rotaYMat[0][0] = cos( degreeY );
-				rotaYMat[2][0] =-1 * sin( degreeY );
-				rotaYMat[0][2] = sin( degreeY );
-				rotaYMat[2][2] = cos( degreeY );
-				break;		
+				degreeY -= 0.1;	break;		
 			case Z_AXIS:
-				degreeZ -= 0.05;
-				rotaZMat[0][0] = cos( degreeZ );
-				rotaZMat[0][1] =-1 * sin( degreeZ );
-				rotaZMat[1][0] = sin( degreeZ );
-				rotaZMat[1][1] = cos( degreeZ );
-				break;		
+				degreeZ -= 0.1;	break;		
 			}
 			break;
 		}//End of selectMode switch
@@ -465,15 +464,15 @@ int main ( int argc, char* argv[] )
 	bool quit = false;
 
 	//Get the uniform location to change their values
-	uniRotaX = glGetUniformLocation( shaderProgram, "rotaX" );
-	uniRotaY = glGetUniformLocation( shaderProgram, "rotaY" );
-	uniRotaZ = glGetUniformLocation( shaderProgram, "rotaZ" );
+	uniDegreeX = glGetUniformLocation( shaderProgram, "degreeX" );
+	uniDegreeY = glGetUniformLocation( shaderProgram, "degreeY" );
+	uniDegreeZ = glGetUniformLocation( shaderProgram, "degreeZ" );
 	uniModel = glGetUniformLocation( shaderProgram, "model" );
 	uniView = glGetUniformLocation( shaderProgram, "view" );
 	uniProj = glGetUniformLocation( shaderProgram, "proj" );
+	uniRevo = glGetUniformLocation( shaderProgram, "revo" );
 	uniViewport = glGetUniformLocation( shaderProgram, "viewport" );
 
-	
 	while( quit == false ){
 		
 		//Start to count for the limited frame rate	
@@ -495,7 +494,7 @@ int main ( int argc, char* argv[] )
 		if( fps.getTicks() < 1000 / FRAME_PER_SEC )
 			SDL_Delay( ( 1000 / FRAME_PER_SEC ) - fps.getTicks() );
 	}	
-	
+
 	cleanUp();
 
 	return 0;
