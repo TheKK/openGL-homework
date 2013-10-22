@@ -23,6 +23,8 @@ SDL_Window *glWindow = NULL;
 
 SDL_GLContext glContext;
 
+bool windowed = true;
+
 GLuint vbo;		//Vertex Buffer Object
 GLuint normalBuffer;	//Normal buffer
 GLuint vao;		//Vertex Array Object
@@ -44,6 +46,14 @@ GLuint uniDegreeZ;
 float degreeX;
 float degreeY;
 float degreeZ;
+
+GLuint uniRota;
+float rotaMat[][4] = {
+		{ 1, 0, 0, 0 },
+		{ 0, 1, 0, 0 },
+		{ 0, 0, 1, 0 },
+		{ 0, 0, 0, 1 }
+};	
 
 GLuint uniRevo;
 float revoMat[][4] = {
@@ -167,20 +177,98 @@ void setOrtho ( int left, int right, int bottom, int top, int near, int far )
 	projMat[2][3] = 1.0 *( near + far ) / ( near - far );	
 }
 
-void setViewport ( int x, int y, int width, int height )
+void setViewport ( int x, int y, int w, int h )
 {
-	viewportMat[0][0] = width / 2;
-	viewportMat[1][1] = height / 2;
-	viewportMat[0][3] = x;
-	viewportMat[1][3] = y;
+	viewportMat[0][0] = w / 2;
+	viewportMat[1][1] = h / 2;
+	viewportMat[0][3] = w / ( 2 + x ); 
+	viewportMat[1][3] = h / ( 2 + y );
 }	
 
-//void rotation ( int axis, float degree )
-//{
-//	switch( axis ){
-//	case X_AXIS:
-//	}
-//}
+void rotationX ( double degree )
+{	
+	float sum = 0;
+	float tmp[4][4];
+	double rotax[4][4] = {
+		{ 1,             0,               0, 0 }, 
+		{ 0, cos( degree ),-1*sin( degree ), 0 },
+		{ 0, sin( degree ),   cos( degree ), 0 },
+		{ 0,             0,               0, 1 }
+	};
+
+	for( int i = 0; i < 4; i++ ){
+		for( int j = 0; j < 4; j++ ){
+			sum = 0;
+			for( int k = 0; k < 4; k++ ){
+				sum += rotax[i][k] * rotaMat[k][j];
+			}
+			tmp[i][j] = sum;	
+		}	
+	}
+
+	//Get the value
+	for( int i = 0; i < 4; i++ )
+		for( int j = 0; j < 4; j++ )
+			rotaMat[i][j] = tmp[i][j];
+	
+}
+
+void rotationY ( double degree )
+{	
+	float sum = 0;
+	float tmp[4][4];
+	double rotax[4][4] = {
+		{   cos( degree ), 0, sin( degree ), 0 }, 
+		{               0, 1,             0, 0 },
+		{-1*sin( degree ), 0, cos( degree ), 0 },
+		{               0, 0,             0, 1 }
+	};
+
+	for( int i = 0; i < 4; i++ ){
+		for( int j = 0; j < 4; j++ ){
+			sum = 0;
+			for( int k = 0; k < 4; k++ ){
+				sum += rotax[i][k] * rotaMat[k][j];
+			}
+			tmp[i][j] = sum;	
+		}	
+	}
+
+	//Get the value
+	for( int i = 0; i < 4; i++ )
+		for( int j = 0; j < 4; j++ )
+			rotaMat[i][j] = tmp[i][j];
+	
+}
+
+void rotationZ ( double degree )
+{	
+	float sum = 0;
+	float tmp[4][4];
+	double rotax[4][4] = {
+		{ cos( degree ),-1*sin( degree ), 0, 0 },
+		{ sin( degree ),   cos( degree ), 0, 0 },
+		{             0,               0, 1, 0 },
+		{             0,               0, 0, 1 }
+	};
+
+	for( int i = 0; i < 4; i++ ){
+		for( int j = 0; j < 4; j++ ){
+			sum = 0;
+			for( int k = 0; k < 4; k++ ){
+				sum += rotax[i][k] * rotaMat[k][j];
+			}
+			tmp[i][j] = sum;	
+		}	
+	}
+
+	//Get the value
+	for( int i = 0; i < 4; i++ )
+		for( int j = 0; j < 4; j++ )
+			rotaMat[i][j] = tmp[i][j];
+	
+}
+
 bool init ()
 {	
 	//Initiralize SDL subsystem
@@ -309,7 +397,7 @@ bool init ()
 
 void windowResize( int width, int height )
 {
-	setViewport( 0, 0, width, height );
+//	setViewport( 0, 0, width, height );
 }
 
 void draw ()
@@ -325,7 +413,7 @@ void draw ()
 	glUniformMatrix4fv( uniView, 1, GL_TRUE, (GLfloat*)viewMat2 );
 	glDrawElements( GL_TRIANGLES, 2*3*6, GL_UNSIGNED_INT, 0 );
 
-	glViewport( 10, 500, 100, 100 );
+	glViewport( 10, SCREEN_HEIGHT - 100 - 10, 100, 100 );
 	glUniformMatrix4fv( uniView, 1, GL_TRUE, (GLfloat*)viewMat3 );
 	glDrawElements( GL_TRIANGLES, 2*3*6, GL_UNSIGNED_INT, 0 );
 
@@ -336,9 +424,7 @@ void draw ()
 void update ()
 {
 	//Update the matrixes
-	glUniform1f( uniDegreeX, degreeX );
-	glUniform1f( uniDegreeY, degreeY );
-	glUniform1f( uniDegreeZ, degreeZ );
+	glUniformMatrix4fv( uniRota, 1, GL_TRUE, (GLfloat*)rotaMat );
 	glUniformMatrix4fv( uniRevo, 1, GL_FALSE, (GLfloat*)revoMat );
 
 	//GL_TRUE means to transpose the matrix before applying, because matrix in GLSL is column major
@@ -389,6 +475,17 @@ void eventHandler ( int key )
 	case SDLK_KP_2:	modelMat[1][1] *= -1;	break;
 	case SDLK_KP_3:	modelMat[2][2] *= -1;	break;
 
+	//Toggle fullscreen
+	case SDLK_RETURN:	
+		if( windowed == true ){
+			SDL_SetWindowFullscreen( glWindow, SDL_WINDOW_FULLSCREEN_DESKTOP );
+			windowed = false;
+		}
+		else{
+			SDL_SetWindowFullscreen( glWindow, 0 );
+			windowed = true;
+		}	
+		break;	
 	//Change the projection mode
 	case SDLK_KP_5:	
 		if( projMat[3][2] == 0 )	projMat[3][2] = 1;	
@@ -414,11 +511,11 @@ void eventHandler ( int key )
 		case ROTATE:
 			switch( selectAxis ){
 			case X_AXIS:
-				degreeX += 0.1;	break;		
+				rotationX( 0.1 );	break;		
 			case Y_AXIS:
-				degreeY += 0.1;	break;		
+				rotationY( 0.1 );	break;		
 			case Z_AXIS:
-				degreeZ += 0.1;	break;		
+				rotationZ( 0.1 );	break;		
 			}
 			break;
 		}//End of selectMode switch
@@ -443,11 +540,11 @@ void eventHandler ( int key )
 		case ROTATE:
 			switch( selectAxis ){
 			case X_AXIS:
-				degreeX -= 0.1;	break;		
+				rotationX(-0.1 );	break;		
 			case Y_AXIS:
-				degreeY -= 0.1;	break;		
+				rotationY(-0.1 );	break;		
 			case Z_AXIS:
-				degreeZ -= 0.1;	break;		
+				rotationZ(-0.1 );	break;		
 			}
 			break;
 		}//End of selectMode switch
@@ -464,9 +561,7 @@ int main ( int argc, char* argv[] )
 	bool quit = false;
 
 	//Get the uniform location to change their values
-	uniDegreeX = glGetUniformLocation( shaderProgram, "degreeX" );
-	uniDegreeY = glGetUniformLocation( shaderProgram, "degreeY" );
-	uniDegreeZ = glGetUniformLocation( shaderProgram, "degreeZ" );
+	uniRota = glGetUniformLocation( shaderProgram, "rota" );
 	uniModel = glGetUniformLocation( shaderProgram, "model" );
 	uniView = glGetUniformLocation( shaderProgram, "view" );
 	uniProj = glGetUniformLocation( shaderProgram, "proj" );
@@ -481,10 +576,10 @@ int main ( int argc, char* argv[] )
 		//Event handler
 		while( SDL_PollEvent( &event ) ){
 			if( event.type == SDL_QUIT )	quit = true;
-			if( event.type == SDL_KEYDOWN )	eventHandler( event.key.keysym.sym );
-			if( event.type == SDL_WINDOWEVENT && event.window.event == SDL_WINDOWEVENT_RESIZED )
+			else if( event.type == SDL_KEYDOWN )	eventHandler( event.key.keysym.sym );
+			else if( event.type == SDL_WINDOWEVENT && event.window.event == SDL_WINDOWEVENT_RESIZED )
 				windowResize( event.window.data1, event.window.data2 );
-		}		
+			}
 	
 		update();
 
