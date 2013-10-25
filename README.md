@@ -14,3 +14,15 @@ It's really hard to made a great UI with SDL, especially with openGL.
 ##Some functions I Did NOT make
 - setViewport, I use the API in openGL
 - cliping, I don't know what should I do.
+
+
+##What these file about
+- main.cpp		Nothing to talk
+- timer.cpp		To limit the maximum frame per second(fps)
+- functions.cpp		Some functions I made for matrix operations
+
+( not sure if I named it right ) 
+- vertexShader		File for GLSL to process vertice
+- fragmentShader	File for GLSL to process color and something else 
+
+- basicNeed.h		Some header that used in most files

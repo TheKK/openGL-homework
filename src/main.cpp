@@ -1,14 +1,13 @@
 /*
+
 main.cpp
+
+author: TheKK <thumbd03803@gmail.com>
+date: 10/16/2013
+
 */
-#include <iostream>
-#include <sstream>
-#include <fstream>
-#include <vector>
-#include <GL/glew.h>
-#include <SDL2/SDL.h>
-#include <SDL2/SDL_opengl.h>
-#include <SOIL/SOIL.h>
+#include "basicNeed.h"
+#include "functions.h"
 #include "timer.h"
 
 using namespace std;
@@ -20,6 +19,7 @@ const int SCREEN_BPP = 32;
 const int FRAME_PER_SEC = 60;
 
 SDL_Window *glWindow = NULL;
+SDL_Window *subWindow = NULL;
 
 SDL_GLContext glContext;
 
@@ -122,73 +122,6 @@ float viewportMat[][4] = {
 		{ 0, 0, 0, 1 }
 };
 
-string loadShaderSource ( string filePath )
-{	
-	//Create file stream and check if there is an error
-	ifstream source( filePath.c_str(), ios::in );
-	if( !source.good() ){
-		cout << "File open failed: " << filePath << endl;
-		return "";
-	}
-
-	//Stream the file date into stringstream buffer	
-	stringstream buffer;
-	buffer << source.rdbuf();
-	source.close();
-
-	//Return the pointer of the string
-	return buffer.str();
-}	
-
-bool loadOBJ ( string filePath, vector <GLfloat> *vertex, vector <GLuint> *element )
-{	
-	//Create a file stream and check if there is an error
-	ifstream OBJsoruce( filePath.c_str(), ios::in );
-	if( !OBJsoruce.good() ){
-		cout << "OBJ file load failed: " << filePath << endl;
-		return false;
-	} 
-
-	//Load line by line and search keyword to identify the data type( vertex or normal or ETC )
-	string strTmp;
-	while( getline( OBJsoruce, strTmp ) ){
-		if( strTmp.find( "v" ) == 0 ){
-			float x, y, z;	
-			sscanf( strTmp.c_str(), "%*s %f %f %f", &x, &y, &z );
-
-			vertex->push_back( x );
-			vertex->push_back( y );
-			vertex->push_back( z );
-		}
-		
-		else if( strTmp.find( "f" ) == 0 ){
-			int vertex1, vertex2, vertex3;
-			int normal1, normal2, normal3;
-			sscanf( strTmp.c_str(), "%*s %d//%d %d//%d %d//%d", &vertex1, &normal1, &vertex2, &normal2, &vertex3, &normal3 );
-
-			element->push_back( vertex1 - 1 );			
-			element->push_back( vertex2 - 1 );			
-			element->push_back( vertex3 - 1 );			
-
-			//normal.push_back( normal1 );
-			//normal.push_back( normal2 );
-			//normal.push_back( normal3 );
-		}	
-	}
-
-	return true;
-}
-
-void setOrtho ( float left, float right, float bottom, float top, float near, float far )
-{	
-	projMat[0][0] = 2.0 / ( right - left );
-	projMat[1][1] = 2.0 / ( top - bottom );
-	projMat[2][2] = 2.0 / ( near - far );
-	
-	projMat[0][3] =-1.0 * ( right + left ) / ( right - left );
-	projMat[1][3] =-1.0 * ( top + bottom ) /	( top - bottom );
-	projMat[2][3] = 1.0 *( near + far ) / ( near - far );	
-}
 
 void setViewport ( int x, int y, int w, int h )
 {
@@ -197,90 +130,6 @@ void setViewport ( int x, int y, int w, int h )
 	viewportMat[0][3] = w / ( 2 + x ); 
 	viewportMat[1][3] = h / ( 2 + y );
 }	
-
-void rotationX ( double degree )
-{	
-	float sum = 0;
-	float tmp[4][4];
-	double rotax[4][4] = {
-		{ 1,             0,               0, 0 }, 
-		{ 0, cos( degree ),-1*sin( degree ), 0 },
-		{ 0, sin( degree ),   cos( degree ), 0 },
-		{ 0,             0,               0, 1 }
-	};
-
-	for( int i = 0; i < 4; i++ ){
-		for( int j = 0; j < 4; j++ ){
-			sum = 0;
-			for( int k = 0; k < 4; k++ ){
-				sum += rotax[i][k] * rotaMat[k][j];
-			}
-			tmp[i][j] = sum;	
-		}	
-	}
-
-	//Get the value
-	for( int i = 0; i < 4; i++ )
-		for( int j = 0; j < 4; j++ )
-			rotaMat[i][j] = tmp[i][j];
-	
-}
-
-void rotationY ( double degree )
-{	
-	float sum = 0;
-	float tmp[4][4];
-	double rotax[4][4] = {
-		{   cos( degree ), 0, sin( degree ), 0 }, 
-		{               0, 1,             0, 0 },
-		{-1*sin( degree ), 0, cos( degree ), 0 },
-		{               0, 0,             0, 1 }
-	};
-
-	for( int i = 0; i < 4; i++ ){
-		for( int j = 0; j < 4; j++ ){
-			sum = 0;
-			for( int k = 0; k < 4; k++ ){
-				sum += rotax[i][k] * rotaMat[k][j];
-			}
-			tmp[i][j] = sum;	
-		}	
-	}
-
-	//Get the value
-	for( int i = 0; i < 4; i++ )
-		for( int j = 0; j < 4; j++ )
-			rotaMat[i][j] = tmp[i][j];
-	
-}
-
-void rotationZ ( double degree )
-{	
-	float sum = 0;
-	float tmp[4][4];
-	double rotax[4][4] = {
-		{ cos( degree ),-1*sin( degree ), 0, 0 },
-		{ sin( degree ),   cos( degree ), 0, 0 },
-		{             0,               0, 1, 0 },
-		{             0,               0, 0, 1 }
-	};
-
-	for( int i = 0; i < 4; i++ ){
-		for( int j = 0; j < 4; j++ ){
-			sum = 0;
-			for( int k = 0; k < 4; k++ ){
-				sum += rotax[i][k] * rotaMat[k][j];
-			}
-			tmp[i][j] = sum;	
-		}	
-	}
-
-	//Get the value
-	for( int i = 0; i < 4; i++ )
-		for( int j = 0; j < 4; j++ )
-			rotaMat[i][j] = tmp[i][j];
-	
-}
 
 bool init ()
 {	
@@ -293,6 +142,11 @@ bool init ()
 				SCREEN_WIDTH, SCREEN_HEIGHT,
 				SDL_WINDOW_OPENGL | SDL_WINDOW_RESIZABLE );
 
+	subWindow = SDL_CreateWindow( "subWindow",
+				SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED,
+				SCREEN_WIDTH, SCREEN_HEIGHT,
+				SDL_WINDOW_RESIZABLE );
+
 	//Create openGL context	
 	glContext = SDL_GL_CreateContext( glWindow );
 
@@ -300,11 +154,11 @@ bool init ()
 	glewExperimental = GL_TRUE;
 	glewInit();
 
-	//Create a VertexArrayObject and copy the vertex date to it
+	//Create a VertexArrayObject and copy the vertex data to it
 	glGenVertexArrays( 1, &vao );
 	glBindVertexArray( vao );
 
-	//Generate a VertexBufferObject and store the vertec data in it
+	//Generate a VertexBufferObject and store the vertex data in it
 	vector <GLfloat> vertex;
 	vector <GLfloat> nornaml;
 	vector <GLuint> element;
@@ -370,7 +224,7 @@ bool init ()
 	glClearColor( 0.8f, 0.8f, 0.2f, 1.0f );	
 
 	//Setup ortho	
-	setOrtho( -2, 2, -2, 2, -2, 2 );
+	setOrtho( projMat,-2, 2, -2, 2, -2, 2 );
 
 	//Enable depth cleaner
 	glEnable( GL_DEPTH_TEST );
@@ -529,11 +383,11 @@ void eventHandler ( int key )
 		case ROTATE:
 			switch( selectAxis ){
 			case X_AXIS:
-				rotationX( 0.1 );	break;		
+				rotationX( rotaMat, 0.1 );	break;		
 			case Y_AXIS:
-				rotationY( 0.1 );	break;		
+				rotationY( rotaMat, 0.1 );	break;		
 			case Z_AXIS:
-				rotationZ( 0.1 );	break;		
+				rotationZ( rotaMat, 0.1 );	break;		
 			}
 			break;
 		case ROTATE_AXIS:
@@ -583,11 +437,11 @@ void eventHandler ( int key )
 		case ROTATE:
 			switch( selectAxis ){
 			case X_AXIS:
-				rotationX(-0.1 );	break;		
+				rotationX( rotaMat,-0.1 );	break;		
 			case Y_AXIS:
-				rotationY(-0.1 );	break;		
+				rotationY( rotaMat,-0.1 );	break;		
 			case Z_AXIS:
-				rotationZ(-0.1 );	break;		
+				rotationZ( rotaMat,-0.1 );	break;		
 			}
 			break;
 		case ROTATE_AXIS:
@@ -653,7 +507,7 @@ int main ( int argc, char* argv[] )
 
 			else if( event.type == SDL_MOUSEWHEEL ){
 				cameraVolum += event.wheel.y;
-				setOrtho(-1*cameraVolum, cameraVolum,-1*cameraVolum, cameraVolum,-1*cameraVolum, cameraVolum );
+				setOrtho( projMat,-1*cameraVolum, cameraVolum,-1*cameraVolum, cameraVolum,-1*cameraVolum, cameraVolum );
 			}
 		}	
 
