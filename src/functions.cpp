@@ -3,7 +3,7 @@
 functions.cpp
 
 author: TheKK <thumbd03803@gmail.com>
-date: 10/16/2013
+date: 10/28/2013
 
 */
 #include "functions.h"

@@ -30,5 +30,5 @@ It's really hard to made a great UI with SDL, especially with openGL.
 
 ##Development environment
 OS: ubuntu 13.04 x86_64
-Library I use: SDL
+Library: SDL2, openGL, glew
 

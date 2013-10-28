@@ -3,7 +3,7 @@
 main.cpp
 
 author: TheKK <thumbd03803@gmail.com>
-date: 10/16/2013
+date: 10/28/2013
 
 */
 #include "basicNeed.h"
@@ -39,40 +39,6 @@ enum MODE{ ROTATE, ROTATE_AXIS, TRANSLATE, SCALE, SHEAR };
 
 int selectAxis = X_AXIS;
 int selectMode = ROTATE;
-<<<<<<< HEAD
-GLuint uniReflectX;
-GLuint elements[] = {
-	0, 1, 2, 3,
-	4, 5, 6, 7,
-	1, 2, 5, 5
-};
-//
-//GLuint elements[] = {
-//	0, 1,	
-//	1, 2,
-//	2, 3,
-//	3, 0,
-//	4, 5,
-//	5, 6,
-//	6, 7,
-//	7, 4,
-//	0, 4,
-//	1, 5,
-//	2, 6,
-//	3, 7
-//};
-
-GLfloat triangle[] = {
-	1.0, 1.0, 1.0, 1.0, 0.0, 0.0,
-	-1.0, 1.0, 1.0, 0.0, 1.0, 0.0,
-	-1.0,-1.0, 1.0, 0.0, 0.0, 1.0,
-	1.0,-1.0, 1.0, 1.0, 1.0, 0.0,
-	1.0, 1.0,-1.0, 0.0, 1.0, 1.0,
-	-1.0, 1.0,-1.0, 1.0, 0.0, 1.0,
-	-1.0,-1.0,-1.0, 0.5, 0.8, 0.5,
-	1.0,-1.0,-1.0, 0.3, 1.0, 0.4
-};
-=======
 
 GLuint uniRota;
 float rotaMat[][4] = {
@@ -81,7 +47,6 @@ float rotaMat[][4] = {
 		{ 0, 0, 1, 0 },
 		{ 0, 0, 0, 1 }
 };	
->>>>>>> dev
 
 GLuint uniRevoX;
 float degreeX = 0;
@@ -111,9 +76,9 @@ float revoZMat[][4] = {
 };	
 		
 GLuint uniModel;
-float shearX = 0;
-float shearY = 0;
-float shearZ = 0;
+float shearX = 1.5;
+float shearY = 1.5;
+float shearZ = 1.5;
 float modelMat[][ 4 ] = {
 		{ 1, 0, 0, 0 },
 		{ 0, 1, 0, 0 },
@@ -133,7 +98,7 @@ float viewMat2[][ 4 ] = {
 		{ 1, 0, 0, 0 },
 		{ 0,-1, 0, 0 },
 		{ 0, 0, 1, 0 },
-		{ 0, 0, 3, 1 }
+		{ 0, 0, 0, 1 }
 };	
 
 float viewMat3[][ 4 ] = {
@@ -168,14 +133,6 @@ void setViewport ( int x, int y, int w, int h )
 	viewportMat[1][3] = h / ( 2 + y );
 }	
 
-<<<<<<< HEAD
-bool loadOBJ( string path, float vertex, float normal )
-{
-	
-}
-	
-=======
->>>>>>> dev
 bool init ()
 {	
 	//Initiralize SDL subsystem
@@ -270,16 +227,6 @@ bool init ()
 	glEnable( GL_DEPTH_TEST );
 	glDepthFunc( GL_LESS );
 
-<<<<<<< HEAD
-	//Setup depth 
-	glEnable( GL_DEPTH_TEST );
-	glDepthFunc( GL_LESS );
-
-	//Setup viewport and othometric
-	glViewport( 0, 0, SCREEN_WIDTH, SCREEN_HEIGHT );
-=======
->>>>>>> dev
-		
 	//Check for error
 	GLint status;
 	glGetShaderiv( vertexShader, GL_COMPILE_STATUS, &status );
@@ -322,9 +269,6 @@ void draw ()
 	glClear( GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT );
 	
 	//Draw a triangle from the three vertices
-<<<<<<< HEAD
-	glDrawElements( GL_QUADS, 4*6, GL_UNSIGNED_INT, 0 );		//Load 3 indices to draw, the data type is GLuint, and there is no offset
-=======
 	glViewport( 0, 0, SCREEN_WIDTH, SCREEN_HEIGHT );
 	glDrawElements( GL_TRIANGLES, 2*3*6, GL_UNSIGNED_INT, 0 );		//Load 3 indices to draw, the data type is GLuint, and there is no offset
 
@@ -335,7 +279,6 @@ void draw ()
 	glViewport( 10, SCREEN_HEIGHT - 100 - 10, 100, 100 );
 	glUniformMatrix4fv( uniView, 1, GL_TRUE, (GLfloat*)viewMat3 );
 	glDrawElements( GL_TRIANGLES, 2*3*6, GL_UNSIGNED_INT, 0 );
->>>>>>> dev
 
 	//Swap window
 	SDL_GL_SwapWindow( glWindow );			
@@ -343,15 +286,6 @@ void draw ()
 
 void update ()
 {
-<<<<<<< HEAD
-	glUniformMatrix4fv( uniRotaX, 1, GL_FALSE, (GLfloat*)rotaXMat );
-	glUniformMatrix4fv( uniRotaY, 1, GL_FALSE, (GLfloat*)rotaYMat );
-	glUniformMatrix4fv( uniRotaZ, 1, GL_FALSE, (GLfloat*)rotaZMat );
-
-	glUniformMatrix4fv( uniModel, 1, GL_FALSE, (GLfloat*)modelMat );
-	glUniformMatrix4fv( uniView, 1, GL_FALSE, (GLfloat*)viewMat );
-	glUniformMatrix4fv( uniProj, 1, GL_FALSE, (GLfloat*)projMat );
-=======
 	//Update the matrixes
 	glUniformMatrix4fv( uniRevoX, 1, GL_TRUE, (GLfloat*)revoXMat );
 	glUniformMatrix4fv( uniRevoY, 1, GL_TRUE, (GLfloat*)revoYMat );
@@ -363,7 +297,6 @@ void update ()
 	glUniformMatrix4fv( uniView, 1, GL_TRUE, (GLfloat*)viewMat );
 	glUniformMatrix4fv( uniProj, 1, GL_TRUE, (GLfloat*)projMat );
 	glUniformMatrix4fv( uniViewport, 1, GL_TRUE, (GLfloat*)viewportMat );
->>>>>>> dev
 }
 
 void cleanUp ()	
@@ -396,17 +329,6 @@ void eventHandler ( int key )
 	case SDLK_x:	selectAxis = X_AXIS;	break;
 	case SDLK_y:	selectAxis = Y_AXIS;	break;
 	case SDLK_z:	selectAxis = Z_AXIS;	break;
-<<<<<<< HEAD
-	
-	case SDLK_s:	selectMode = SCALE;	break;
-	case SDLK_r:	selectMode = ROTATE;	break;
-	case SDLK_t:	selectMode = TRANSLATE;	break;
-
-	case SDLK_KP_1:	viewMat[0][0] *= -1;	break;
-	case SDLK_KP_2:	viewMat[1][1] *= -1;	break;
-	case SDLK_KP_3:	viewMat[2][2] *= -1;	break;
-		
-=======
 
 	//Change mode	
 	case SDLK_s:	selectMode = SCALE;		break;
@@ -439,7 +361,6 @@ void eventHandler ( int key )
 		break;
 
 	//Increase or decrease the value	
->>>>>>> dev
 	case SDLK_UP:
 		switch( selectMode ){
 		case TRANSLATE:

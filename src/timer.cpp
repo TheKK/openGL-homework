@@ -1,5 +1,10 @@
 /*
-timer.cpp
+
+main.cpp
+
+author: TheKK <thumbd03803@gmail.com>
+date: 10/28/2013
+
 */
 
 #include "timer.h"
