@@ -1,12 +1,23 @@
-1.translate	done!
-2.rotation	
-3.revolution
+1.translate	done!, but something wrong after revolution
+2.rotation	done!	
+3.revolution	done!
 4.scale		done!
-5.reflection
-6.shear
+5.reflection	done!
+6.shear		done!
+7.OBJ loader	done!
+8.user guide	done!
+9.perspective view	not yet 
 
 TODO:
-*make reflection function
+***Shear
+
+***viewport matrix
+
+***clipling
+
+*about glDrawElements, how to get the number of indices?
+
+*try to load texture from OBJ loader
 
 *search more about rotation, to make rotation and revolution function work correctly
 
