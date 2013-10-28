@@ -161,7 +161,7 @@ bool init ()
 	vector <GLuint> element;
 
 	//Load data from OBJ file
-	if( loadOBJ( "monkey.obj", &vertex, &element ) == false )	return false;	
+	if( loadOBJ( "cube.obj", &vertex, &element ) == false )	return false;	
 
 	glGenBuffers( 1, &vbo );
 	glBindBuffer( GL_ARRAY_BUFFER, vbo );

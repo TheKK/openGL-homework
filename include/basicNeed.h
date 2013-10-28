@@ -14,9 +14,8 @@ date: 10/16/2013
 #include <sstream>
 #include <fstream>
 #include <vector>
-#include <GL/glew.h>
+#include "glew.h"
 #include <SDL2/SDL.h>
 #include <SDL2/SDL_opengl.h>
-#include <SOIL/SOIL.h>
 
 #endif
