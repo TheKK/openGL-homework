@@ -35,11 +35,10 @@ GLuint shaderProgram;
 GLuint posAttrib;	//Position Attribute
 
 enum AXIS{ X_AXIS, Y_AXIS, Z_AXIS };
-enum MODE{ ROTATE, ROTATE_AXIS, TRANSLATE, SCALE };
+enum MODE{ ROTATE, ROTATE_AXIS, TRANSLATE, SCALE, SHEAR };
 
 int selectAxis = X_AXIS;
 int selectMode = ROTATE;
-
 
 GLuint uniRota;
 float rotaMat[][4] = {
@@ -77,6 +76,9 @@ float revoZMat[][4] = {
 };	
 		
 GLuint uniModel;
+float shearX = 0;
+float shearY = 0;
+float shearZ = 0;
 float modelMat[][ 4 ] = {
 		{ 1, 0, 0, 0 },
 		{ 0, 1, 0, 0 },
@@ -141,11 +143,6 @@ bool init ()
 				SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED,
 				SCREEN_WIDTH, SCREEN_HEIGHT,
 				SDL_WINDOW_OPENGL | SDL_WINDOW_RESIZABLE );
-
-	subWindow = SDL_CreateWindow( "subWindow",
-				SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED,
-				SCREEN_WIDTH, SCREEN_HEIGHT,
-				SDL_WINDOW_RESIZABLE );
 
 	//Create openGL context	
 	glContext = SDL_GL_CreateContext( glWindow );
@@ -339,6 +336,7 @@ void eventHandler ( int key )
 	case SDLK_r:	selectMode = ROTATE;		break;
 	case SDLK_v:	selectMode = ROTATE_AXIS;	break;
 	case SDLK_t:	selectMode = TRANSLATE;		break;
+	case SDLK_h:	selectMode = SHEAR;		break;
 
 	//Reflection
 	case SDLK_KP_1:	modelMat[0][0] *= -1;	break;
@@ -415,6 +413,19 @@ void eventHandler ( int key )
 				break;
 			}
 			break;	
+		case SHEAR:
+			switch( selectAxis ){
+			case X_AXIS:
+				shearX += 0.05;
+				modelMat[0][1] = 1 / tan( shearX );
+			case Y_AXIS:
+				shearY += 0.05;
+				modelMat[1][0] = 1 / tan( shearY );
+			case Z_AXIS:
+				shearZ += 0.05;
+				modelMat[2][1] = 1 / tan( shearZ );
+			}
+			break;
 		}//End of selectMode switch
 		break;
 
