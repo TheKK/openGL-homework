@@ -272,13 +272,13 @@ void draw ()
 	glViewport( 0, 0, SCREEN_WIDTH, SCREEN_HEIGHT );
 	glDrawElements( GL_TRIANGLES, 2*3*6, GL_UNSIGNED_INT, 0 );		//Load 3 indices to draw, the data type is GLuint, and there is no offset
 
-	glViewport( 10, 10, 100, 100 );
-	glUniformMatrix4fv( uniView, 1, GL_TRUE, (GLfloat*)viewMat2 );
-	glDrawElements( GL_TRIANGLES, 2*3*6, GL_UNSIGNED_INT, 0 );
-
-	glViewport( 10, SCREEN_HEIGHT - 100 - 10, 100, 100 );
-	glUniformMatrix4fv( uniView, 1, GL_TRUE, (GLfloat*)viewMat3 );
-	glDrawElements( GL_TRIANGLES, 2*3*6, GL_UNSIGNED_INT, 0 );
+//	glViewport( 10, 10, 100, 100 );
+//	glUniformMatrix4fv( uniView, 1, GL_TRUE, (GLfloat*)viewMat2 );
+//	glDrawElements( GL_TRIANGLES, 2*3*6, GL_UNSIGNED_INT, 0 );
+//
+//	glViewport( 10, SCREEN_HEIGHT - 100 - 10, 100, 100 );
+//	glUniformMatrix4fv( uniView, 1, GL_TRUE, (GLfloat*)viewMat3 );
+//	glDrawElements( GL_TRIANGLES, 2*3*6, GL_UNSIGNED_INT, 0 );
 
 	//Swap window
 	SDL_GL_SwapWindow( glWindow );			
