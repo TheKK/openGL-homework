@@ -1,5 +1,5 @@
 ##Ok, it's time for the next challenge, SHADING!
-I'm more familar with SDL2 so this time might be ...
+I'm more familar with SDL2 so this time might be ... more hard.
 
 ##Feature I made
 - Rotates along x, y, z axis
