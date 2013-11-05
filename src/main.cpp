@@ -3,7 +3,6 @@
 main.cpp
 
 author: TheKK <thumbd03803@gmail.com>
-date: 10/28/2013
 
 */
 #include "basicNeed.h"
@@ -33,6 +32,7 @@ GLuint vertexShader;
 GLuint fragmentShader;
 GLuint shaderProgram;
 GLuint posAttrib;	//Position Attribute
+GLuint normalAttrib;
 
 enum AXIS{ X_AXIS, Y_AXIS, Z_AXIS };
 enum MODE{ ROTATE, ROTATE_AXIS, TRANSLATE, SCALE, SHEAR };
@@ -124,25 +124,18 @@ float viewportMat[][4] = {
 		{ 0, 0, 0, 1 }
 };
 
-
-void setViewport ( int x, int y, int w, int h )
-{
-	viewportMat[0][0] = w / 2;
-	viewportMat[1][1] = h / 2;
-	viewportMat[0][3] = w / ( 2 + x ); 
-	viewportMat[1][3] = h / ( 2 + y );
-}	
-
 bool init ()
 {	
 	//Initiralize SDL subsystem
 	if( SDL_Init( SDL_INIT_VIDEO ) < 0 )	return false;
 
 	//Setup the window
-	glWindow = SDL_CreateWindow( "OpenGL",
-				SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED,
-				SCREEN_WIDTH, SCREEN_HEIGHT,
-				SDL_WINDOW_OPENGL | SDL_WINDOW_RESIZABLE );
+	glWindow = SDL_CreateWindow(
+			"OpenGL",
+			SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED,
+			SCREEN_WIDTH, SCREEN_HEIGHT,
+			SDL_WINDOW_OPENGL | SDL_WINDOW_RESIZABLE
+			);
 
 	//Create openGL context	
 	glContext = SDL_GL_CreateContext( glWindow );
@@ -155,14 +148,16 @@ bool init ()
 	glGenVertexArrays( 1, &vao );
 	glBindVertexArray( vao );
 
-	//Generate a VertexBufferObject and store the vertex data in it
+	//Generate a VertexBufferObject and store the vertex data into it
 	vector <GLfloat> vertex;
-	vector <GLfloat> nornaml;
+	vector <GLfloat> normal;
 	vector <GLuint> element;
+	vector <GLuint> normalIndices;
 
 	//Load data from OBJ file
-	if( loadOBJ( "cube.obj", &vertex, &element ) == false )	return false;	
+	if( loadOBJ( "cube.obj", &vertex, &element, &normal, &normalIndices ) == false )	return false;	
 
+	//Generate a VertexArrayObject and store the vertice data into it
 	glGenBuffers( 1, &vbo );
 	glBindBuffer( GL_ARRAY_BUFFER, vbo );
 	glBufferData( GL_ARRAY_BUFFER,
@@ -171,7 +166,7 @@ bool init ()
 			GL_STATIC_DRAW
 			);
 
-	//Generate a ElementBufferObject and store the element date in it
+	//Generate a ElementBufferObject and store the element data into it
 	glGenBuffers( 1, &ebo );
 	glBindBuffer( GL_ELEMENT_ARRAY_BUFFER, ebo );
 	glBufferData( GL_ELEMENT_ARRAY_BUFFER,
@@ -180,6 +175,14 @@ bool init ()
 			GL_STATIC_DRAW
 			);	
 
+	//Generate a NormalBufferObject and store the normal data into it
+	glGenBuffers( 1, &normalBuffer );
+	glBindBuffer( GL_ARRAY_BUFFER, normalBuffer );
+	glBufferData( GL_ARRAY_BUFFER,
+			normal.size() * sizeof( GLfloat ),
+			&normal[ 0 ],
+			GL_STATIC_DRAW
+			);
 
 	/*SHADERS*/
 	//Create and compile vertex shader
@@ -213,15 +216,20 @@ bool init ()
 	glUseProgram( shaderProgram );
 	
 	//Specity the layout of the vertex data			NEED MORE STUDY!!!
-	posAttrib = glGetAttribLocation( shaderProgram, "position" );		
+	posAttrib = glGetAttribLocation( shaderProgram, "position_modelspace" );		
 	glEnableVertexAttribArray( posAttrib );
+	glBindBuffer( GL_ARRAY_BUFFER, vbo );
 	glVertexAttribPointer( posAttrib, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(GLfloat), 0 );
 
+	glEnableVertexAttribArray( 1 );
+	glBindBuffer( GL_ARRAY_BUFFER, normalBuffer );
+	glVertexAttribPointer( 1, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(GLfloat), 0 );
+
 	//Setup the clear color
-	glClearColor( 0.8f, 0.8f, 0.2f, 1.0f );	
+	glClearColor( 0.0f, 0.0f, 0.0f, 0.0f );
 
 	//Setup ortho	
-	setOrtho( projMat,-2, 2, -2, 2, -2, 2 );
+	setOrtho( projMat,-2, 2, -2, 2, -5, 5 );
 
 	//Enable depth cleaner
 	glEnable( GL_DEPTH_TEST );
@@ -269,16 +277,8 @@ void draw ()
 	glClear( GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT );
 	
 	//Draw a triangle from the three vertices
-	glViewport( 0, 0, SCREEN_WIDTH, SCREEN_HEIGHT );
+	glViewport( 0, 0, SCREEN_WIDTH, SCREEN_HEIGHT );	
 	glDrawElements( GL_TRIANGLES, 2*3*6, GL_UNSIGNED_INT, 0 );		//Load 3 indices to draw, the data type is GLuint, and there is no offset
-
-//	glViewport( 10, 10, 100, 100 );
-//	glUniformMatrix4fv( uniView, 1, GL_TRUE, (GLfloat*)viewMat2 );
-//	glDrawElements( GL_TRIANGLES, 2*3*6, GL_UNSIGNED_INT, 0 );
-//
-//	glViewport( 10, SCREEN_HEIGHT - 100 - 10, 100, 100 );
-//	glUniformMatrix4fv( uniView, 1, GL_TRUE, (GLfloat*)viewMat3 );
-//	glDrawElements( GL_TRIANGLES, 2*3*6, GL_UNSIGNED_INT, 0 );
 
 	//Swap window
 	SDL_GL_SwapWindow( glWindow );			
@@ -315,6 +315,7 @@ void cleanUp ()
 
 	//Delete VBO and VAO	
 	glDeleteBuffers( 1, &vbo );
+	glDeleteBuffers( 1, &normalBuffer );
 	glDeleteVertexArrays( 1, &vao );
 
 	//Exit SDL subsystem	

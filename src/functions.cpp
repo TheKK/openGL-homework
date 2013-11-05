@@ -3,7 +3,6 @@
 functions.cpp
 
 author: TheKK <thumbd03803@gmail.com>
-date: 10/28/2013
 
 */
 #include "functions.h"
@@ -100,7 +99,7 @@ void rotationZ ( float matrix[4][4], double degree )
 			matrix[i][j] = tmp[i][j];
 }
 
-bool loadOBJ ( string filePath, vector <GLfloat> *vertex, vector <GLuint> *element )
+bool loadOBJ ( string filePath, vector <GLfloat> *vertex, vector <GLuint> *element , vector <GLfloat> *normal, vector <GLuint> *normalIndices )
 {	
 	//Create a file stream and check if there is an error
 	ifstream OBJsoruce( filePath.c_str(), ios::in );
@@ -120,19 +119,28 @@ bool loadOBJ ( string filePath, vector <GLfloat> *vertex, vector <GLuint> *eleme
 			vertex->push_back( y );
 			vertex->push_back( z );
 		}
+	
+		else if( strTmp.find( "n" ) == 0){
+			float x, y, z;
+			sscanf( strTmp.c_str(), "%*s %f %f %f", &x, &y, &z );
+			
+			normal->push_back( x );		
+			normal->push_back( y );		
+			normal->push_back( z );		
+		}
 		
 		else if( strTmp.find( "f" ) == 0 ){
 			int vertex1, vertex2, vertex3;
-			int normal1, normal2, normal3;
-			sscanf( strTmp.c_str(), "%*s %d//%d %d//%d %d//%d", &vertex1, &normal1, &vertex2, &normal2, &vertex3, &normal3 );
+			int normalIndex[3];
+			sscanf( strTmp.c_str(), "%*s %d//%d %d//%d %d//%d", &vertex1, &normalIndex[0], &vertex2, &normalIndex[1], &vertex3, &normalIndex[2] );
 
 			element->push_back( vertex1 - 1 );			
 			element->push_back( vertex2 - 1 );			
 			element->push_back( vertex3 - 1 );			
-
-			//normal.push_back( normal1 );
-			//normal.push_back( normal2 );
-			//normal.push_back( normal3 );
+		
+			normalIndices->push_back( normalIndex[0] - 1 );
+			normalIndices->push_back( normalIndex[1] - 1 );
+			normalIndices->push_back( normalIndex[2] - 1 );
 		}	
 	}
 
