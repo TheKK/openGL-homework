@@ -23,5 +23,13 @@ void main() {
 	float distance = lenght( lightPosition_worldspace - position_worldspace );	
 
 	//Normal of the computed fragment, in camera space
+	vec3 n = normalize( normal_cameraspace );
+
+	//Direction of the light to the vertex
+	vec3 l = normalize( lightDirection_cameraspace );
+
+
+
+
 
 }
