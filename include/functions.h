@@ -18,7 +18,7 @@ void rotationY ( float matrix[4][4], double degree );
 
 void rotationZ ( float matrix[4][4], double degree );
 
-bool loadOBJ ( string filePath, vector <GLfloat> *vertex, vector <GLuint> *element , vector <GLfloat> *normal, vector <GLuint> *normalIndices );
+bool loadOBJ ( string filePath, vector<GLfloat> &vertex, vector<GLuint> &element, vector<GLfloat> &normal );
 
 string loadShaderSource ( string filePath );
 

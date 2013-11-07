@@ -99,7 +99,7 @@ void rotationZ ( float matrix[4][4], double degree )
 			matrix[i][j] = tmp[i][j];
 }
 
-bool loadOBJ ( string filePath, vector <GLfloat> *vertex, vector <GLuint> *element , vector <GLfloat> *normal, vector <GLuint> *normalIndices )
+bool loadOBJ ( string filePath, vector<GLfloat> &vertex, vector<GLuint> &element, vector<GLfloat> &normal )
 {	
 	//Create a file stream and check if there is an error
 	ifstream OBJsoruce( filePath.c_str(), ios::in );
@@ -110,40 +110,42 @@ bool loadOBJ ( string filePath, vector <GLfloat> *vertex, vector <GLuint> *eleme
 
 	//Load line by line and search keyword to identify the data type( vertex or normal or ETC )
 	string strTmp;
+	vector <GLfloat> normalTable;
+	vector <GLuint> normalIndice;
+	float vx, vy, vz;
+	float nx, ny, nz;
+	int vertex1, vertex2, vertex3;
+	int normalIndex1, normalIndex2, normalIndex3;
 	while( getline( OBJsoruce, strTmp ) ){
-		if( strTmp.find( "v" ) == 0 ){
-			float x, y, z;	
-			sscanf( strTmp.c_str(), "%*s %f %f %f", &x, &y, &z );
-
-			vertex->push_back( x );
-			vertex->push_back( y );
-			vertex->push_back( z );
+		if( sscanf( strTmp.c_str(), "v %f %f %f\n", &vx, &vy, &vz ) > 0 ){
+			vertex.push_back( vx );
+			vertex.push_back( vy );
+			vertex.push_back( vz );
 		}
 	
-		else if( strTmp.find( "n" ) == 0){
-			float x, y, z;
-			sscanf( strTmp.c_str(), "%*s %f %f %f", &x, &y, &z );
-			
-			normal->push_back( x );		
-			normal->push_back( y );		
-			normal->push_back( z );		
+		else if( sscanf( strTmp.c_str(), "vn %f %f %f", &nx, &ny, &nz ) > 0 ){
+			normalTable.push_back( nx );
+			normalTable.push_back( ny );
+			normalTable.push_back( nz );
 		}
 		
-		else if( strTmp.find( "f" ) == 0 ){
-			int vertex1, vertex2, vertex3;
-			int normalIndex[3];
-			sscanf( strTmp.c_str(), "%*s %d//%d %d//%d %d//%d", &vertex1, &normalIndex[0], &vertex2, &normalIndex[1], &vertex3, &normalIndex[2] );
+		else if( sscanf( strTmp.c_str(), "%*s %d//%d %d//%d %d//%d", &vertex1, &normalIndex1, &vertex2, &normalIndex2, &vertex3, &normalIndex3 ) > 0 ){
+			element.push_back( vertex1 - 1 );			
+			element.push_back( vertex2 - 1 );			
+			element.push_back( vertex3 - 1 );			
 
-			element->push_back( vertex1 - 1 );			
-			element->push_back( vertex2 - 1 );			
-			element->push_back( vertex3 - 1 );			
-		
-			normalIndices->push_back( normalIndex[0] - 1 );
-			normalIndices->push_back( normalIndex[1] - 1 );
-			normalIndices->push_back( normalIndex[2] - 1 );
-		}	
+			normalIndice.push_back( normalIndex1 - 1 );
+			normalIndice.push_back( normalIndex2 - 1 );
+			normalIndice.push_back( normalIndex3 - 1 );	
+		}
 	}
-
+	//Match normal to each vertex
+	normal.resize( vertex.size(), 0 );
+	for( int i = 0; i < element.size(); i++ ){
+		normal[ element[i] * 3 + 0 ] += normalTable[ normalIndice[i] * 3 + 0 ];	
+		normal[ element[i] * 3 + 1 ] += normalTable[ normalIndice[i] * 3 + 1 ];	
+		normal[ element[i] * 3 + 2 ] += normalTable[ normalIndice[i] * 3 + 2 ];	
+	}	
 	return true;
 }
 

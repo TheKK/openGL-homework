@@ -9,6 +9,9 @@ author: TheKK <thumbd03803@gmail.com>
 #include "functions.h"
 #include "timer.h"
 
+#define VERTEX_SHADER_PATH	"shader/basicShader.vertexshader"
+#define FRAGMENT_SHADER_PATH	"shader/basicShader.fragmentshader"
+
 using namespace std;
 
 const int SCREEN_WIDTH = 800;
@@ -31,8 +34,8 @@ GLuint ebo;		//Element Buffer Object
 GLuint vertexShader;	
 GLuint fragmentShader;
 GLuint shaderProgram;
-GLuint posAttrib;	//Position Attribute
-GLuint normalAttrib;
+GLint posAttrib;	//Position Attribute
+GLint normalAttrib;
 
 enum AXIS{ X_AXIS, Y_AXIS, Z_AXIS };
 enum MODE{ ROTATE, ROTATE_AXIS, TRANSLATE, SCALE, SHEAR };
@@ -124,6 +127,9 @@ float viewportMat[][4] = {
 		{ 0, 0, 0, 1 }
 };
 
+GLuint uniLight;
+float lightPosition[] = { 10, 30, -10 };
+
 bool init ()
 {	
 	//Initiralize SDL subsystem
@@ -149,19 +155,18 @@ bool init ()
 	glBindVertexArray( vao );
 
 	//Generate a VertexBufferObject and store the vertex data into it
-	vector <GLfloat> vertex;
-	vector <GLfloat> normal;
-	vector <GLuint> element;
-	vector <GLuint> normalIndices;
+	vector<GLfloat> vertex;
+	vector<GLfloat> normal;
+	vector<GLuint> element;
 
 	//Load data from OBJ file
-	if( loadOBJ( "cube.obj", &vertex, &element, &normal, &normalIndices ) == false )	return false;	
+	if( loadOBJ( "cube.obj", vertex, element, normal ) == false )	return false;	
 
 	//Generate a VertexArrayObject and store the vertice data into it
 	glGenBuffers( 1, &vbo );
 	glBindBuffer( GL_ARRAY_BUFFER, vbo );
 	glBufferData( GL_ARRAY_BUFFER,
-			vertex.size() * sizeof( GLfloat ),
+			vertex.size() * sizeof(GLfloat),
 			&vertex[ 0 ],
 			GL_STATIC_DRAW
 			);
@@ -170,7 +175,7 @@ bool init ()
 	glGenBuffers( 1, &ebo );
 	glBindBuffer( GL_ELEMENT_ARRAY_BUFFER, ebo );
 	glBufferData( GL_ELEMENT_ARRAY_BUFFER,
-			element.size() * sizeof( GLuint ),
+			element.size() * sizeof(GLuint),
 			&element[ 0 ],
 			GL_STATIC_DRAW
 			);	
@@ -179,14 +184,14 @@ bool init ()
 	glGenBuffers( 1, &normalBuffer );
 	glBindBuffer( GL_ARRAY_BUFFER, normalBuffer );
 	glBufferData( GL_ARRAY_BUFFER,
-			normal.size() * sizeof( GLfloat ),
+			normal.size() * sizeof(GLfloat),
 			&normal[ 0 ],
 			GL_STATIC_DRAW
 			);
 
 	/*SHADERS*/
 	//Create and compile vertex shader
-	string str = loadShaderSource( "shader/vertexShader" );
+	string str = loadShaderSource( VERTEX_SHADER_PATH );
 	if( str == "" )	return false;
 	vertexShader = glCreateShader( GL_VERTEX_SHADER );
 	glShaderSource( vertexShader,		//Shader type
@@ -197,7 +202,7 @@ bool init ()
 	glCompileShader( vertexShader );
 
 	//Create and compile fragment shader
-	str = loadShaderSource( "shader/fragmentShader" );
+	str = loadShaderSource( FRAGMENT_SHADER_PATH );
 	if( str == "" )	return false;
 	fragmentShader = glCreateShader( GL_FRAGMENT_SHADER );
 	glShaderSource( fragmentShader,
@@ -221,9 +226,10 @@ bool init ()
 	glBindBuffer( GL_ARRAY_BUFFER, vbo );
 	glVertexAttribPointer( posAttrib, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(GLfloat), 0 );
 
-	glEnableVertexAttribArray( 1 );
+	normalAttrib = glGetAttribLocation( shaderProgram, "normal_modelspace" );		
+	glEnableVertexAttribArray( normalAttrib );
 	glBindBuffer( GL_ARRAY_BUFFER, normalBuffer );
-	glVertexAttribPointer( 1, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(GLfloat), 0 );
+	glVertexAttribPointer( normalAttrib, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(GLfloat), 0 );
 
 	//Setup the clear color
 	glClearColor( 0.0f, 0.0f, 0.0f, 0.0f );
@@ -297,6 +303,8 @@ void update ()
 	glUniformMatrix4fv( uniView, 1, GL_TRUE, (GLfloat*)viewMat );
 	glUniformMatrix4fv( uniProj, 1, GL_TRUE, (GLfloat*)projMat );
 	glUniformMatrix4fv( uniViewport, 1, GL_TRUE, (GLfloat*)viewportMat );
+
+	glUniform3fv( uniLight, 1, (GLfloat*)lightPosition ); 
 }
 
 void cleanUp ()	
@@ -503,6 +511,7 @@ int main ( int argc, char* argv[] )
 	uniView = glGetUniformLocation( shaderProgram, "view" );
 	uniProj = glGetUniformLocation( shaderProgram, "proj" );
 	uniViewport = glGetUniformLocation( shaderProgram, "viewport" );
+	uniLight = glGetUniformLocation( shaderProgram, "lightPosition_space" );
 
 	while( quit == false ){
 		
@@ -519,6 +528,11 @@ int main ( int argc, char* argv[] )
 			else if( event.type == SDL_MOUSEWHEEL ){
 				cameraVolum += event.wheel.y;
 				setOrtho( projMat,-1*cameraVolum, cameraVolum,-1*cameraVolum, cameraVolum,-1*cameraVolum, cameraVolum );
+			}
+			
+			else if( event.type == SDL_MOUSEMOTION ){
+				lightPosition[0] = -25 + 50*( (float)event.motion.x / SCREEN_WIDTH );
+				lightPosition[2] = -25 + 50*( (float)event.motion.y / SCREEN_HEIGHT );
 			}
 		}	
 
