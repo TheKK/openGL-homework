@@ -30,4 +30,3 @@ loadOBJ ( string filePath, vector<GLfloat> &vertex, vector<GLuint> &element, vec
 
 string
 loadShaderSource ( string filePath );
-

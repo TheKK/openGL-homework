@@ -12,6 +12,9 @@ author: TheKK <thumbd03803@gmail.com>
 #define VERTEX_SHADER_PATH	"shader/basicShader.vertexshader"
 #define FRAGMENT_SHADER_PATH	"shader/basicShader.fragmentshader"
 
+void
+effect();
+
 using namespace std;
 
 const int SCREEN_WIDTH = 800;
@@ -25,6 +28,7 @@ SDL_Window *subWindow = NULL;
 SDL_GLContext glContext;
 
 bool windowed = true;
+GLuint count = 0;
 
 GLuint vbo;		//Vertex Buffer Object
 GLuint vertexNum;	//Number of loaded vertics
@@ -282,11 +286,13 @@ void draw ()
 {
 	//Clear the screen
 	glClear( GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT );
-	
+
 	//Draw a triangle from the three vertices
 	glViewport( 0, 0, SCREEN_WIDTH, SCREEN_HEIGHT );	
-	glDrawElements( GL_TRIANGLES, vertexNum, GL_UNSIGNED_INT, 0 );		//Load 3 indices to draw, the data type is GLuint, and there is no offset
-	//glDrawRangeElements( GL_TRIANGLES, 0, vertexNum, 30, GL_INT, 0 );
+
+	if( count < vertexNum/3 )	count++;
+	glDrawRangeElements( GL_TRIANGLES, 6*count, 6*count+2, 6*count+6, GL_UNSIGNED_INT, 0 );
+	
 
 	//Swap window
 	SDL_GL_SwapWindow( glWindow );			
@@ -340,6 +346,9 @@ void eventHandler ( int key )
 	case SDLK_x:	selectAxis = X_AXIS;	break;
 	case SDLK_y:	selectAxis = Y_AXIS;	break;
 	case SDLK_z:	selectAxis = Z_AXIS;	break;
+	
+	//Add count
+	case SDLK_e:	count = 0;	break;
 
 	//Change mode	
 	case SDLK_s:	selectMode = SCALE;		break;
@@ -501,7 +510,18 @@ void eventHandler ( int key )
 	}
 }
 
-int main ( int argc, char* argv[] )
+void
+effect ()
+{
+	//Clear the screen
+	glClear( GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT );
+	SDL_GL_SwapWindow( glWindow );			
+
+	//Draw a triangle from the three vertices
+}
+
+int
+main ( int argc, char* argv[] )
 {
 	if( init() == false )	return 1;
 
