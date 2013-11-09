@@ -6,7 +6,7 @@ in vec3 eyeDirection_cameraspace;
 in vec3 lightDirection_cameraspace;
 in vec3 lightPosition_worldspace;
 
-out vec3 outColor;
+out vec4 outColor;
 
 
 void main() {
@@ -15,9 +15,9 @@ void main() {
 	float lightPower = 900.f;	
 	
 	//Object properties
-	vec3 objectDiffuseColor = vec3( 0.904, 0.986, 0.968 ); 
-	vec3 objectAmbientColor = vec3( 0.1, 0.1, 0.1 ) * objectDiffuseColor;
-	vec3 objectSpecularColor = vec3( 0.4, 0.4, 0.4 );
+	vec3 objectDiffuseColor = vec3( 0.9, 0.9, 0.9 ); 
+	vec3 objectAmbientColor = vec3( 0.2, 0.2, 0.2 ) * objectDiffuseColor;
+	vec3 objectSpecularColor = vec3( 0.2, 0.2, 0.2 );
 
 	//Calculate the distance between light and vertex	
 	float distance = length( lightPosition_worldspace - position_worldspace );	
@@ -36,8 +36,10 @@ void main() {
 	//Calculate the cosine value between E and R
 	float cosAlpha = clamp( dot( E, R ), 0, 1 );
 
-	outColor = 
+	outColor = vec4(
 			objectAmbientColor +
 			objectDiffuseColor * lightColor * lightPower * cosTheta / ( distance * distance ) +
-			objectSpecularColor * lightColor * lightPower * pow( cosAlpha, 5 ) / ( distance * distance );	
+			objectSpecularColor * lightColor * lightPower * pow( cosAlpha, 5 ) / ( distance * distance ),
+			0	
+			);
 }

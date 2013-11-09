@@ -10,15 +10,24 @@ date: 10/16/2013
 
 using namespace std;
 
-void setOrtho ( float projMat[4][4], float left, float right, float bottom, float top, float near, float far );
+void
+setOrtho ( float projMat[4][4], float left, float right, float bottom, float top, float near, float far );
 
-void rotationX ( float matrix[4][4], double degree );
+void
+setPerspec ( float projMat[4][4], float left, float right, float top, float bottom, float near, float far );
 
-void rotationY ( float matrix[4][4], double degree );
+void
+rotationX ( float matrix[4][4], double degree );
 
-void rotationZ ( float matrix[4][4], double degree );
+void
+rotationY ( float matrix[4][4], double degree );
 
-bool loadOBJ ( string filePath, vector<GLfloat> &vertex, vector<GLuint> &element, vector<GLfloat> &normal );
+void
+rotationZ ( float matrix[4][4], double degree );
 
-string loadShaderSource ( string filePath );
+bool
+loadOBJ ( string filePath, vector<GLfloat> &vertex, vector<GLuint> &element, vector<GLfloat> &normal );
+
+string
+loadShaderSource ( string filePath );
 

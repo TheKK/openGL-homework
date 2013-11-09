@@ -16,7 +16,6 @@ using namespace std;
 
 const int SCREEN_WIDTH = 800;
 const int SCREEN_HEIGHT = SCREEN_WIDTH;
-const int SCREEN_BPP = 32;
 
 const int FRAME_PER_SEC = 60;
 
@@ -28,14 +27,16 @@ SDL_GLContext glContext;
 bool windowed = true;
 
 GLuint vbo;		//Vertex Buffer Object
+GLuint vertexNum;	//Number of loaded vertics
+
 GLuint normalBuffer;	//Normal buffer
 GLuint vao;		//Vertex Array Object
 GLuint ebo;		//Element Buffer Object
 GLuint vertexShader;	
 GLuint fragmentShader;
 GLuint shaderProgram;
-GLint posAttrib;	//Position Attribute
-GLint normalAttrib;
+GLint posAttrib;	//Position attribute
+GLint normalAttrib;	//Normal attribute
 
 enum AXIS{ X_AXIS, Y_AXIS, Z_AXIS };
 enum MODE{ ROTATE, ROTATE_AXIS, TRANSLATE, SCALE, SHEAR };
@@ -92,22 +93,8 @@ float modelMat[][ 4 ] = {
 GLuint uniView;
 float viewMat[][ 4 ] = {
 		{ 1, 0, 0, 0 },
-		{ 0, 0,-1, 0 },
-		{ 0, 1, 0 ,0 },
-		{ 0, 0, 0, 1 }
-};	
-
-float viewMat2[][ 4 ] = {
-		{ 1, 0, 0, 0 },
-		{ 0,-1, 0, 0 },
 		{ 0, 0, 1, 0 },
-		{ 0, 0, 0, 1 }
-};	
-
-float viewMat3[][ 4 ] = {
-		{ 0, 0, 1, 0 },
-		{ 0, 1, 0, 0 },
-		{-1, 0, 0, 0 },
+		{ 0,-1, 0 ,0 },
 		{ 0, 0, 0, 1 }
 };	
 
@@ -128,7 +115,7 @@ float viewportMat[][4] = {
 };
 
 GLuint uniLight;
-float lightPosition[] = { 10, 30, -10 };
+float lightPosition[] = { 0, -30, 0 };
 
 bool init ()
 {	
@@ -179,6 +166,7 @@ bool init ()
 			&element[ 0 ],
 			GL_STATIC_DRAW
 			);	
+	vertexNum = element.size();
 
 	//Generate a NormalBufferObject and store the normal data into it
 	glGenBuffers( 1, &normalBuffer );
@@ -221,6 +209,8 @@ bool init ()
 	glUseProgram( shaderProgram );
 	
 	//Specity the layout of the vertex data			NEED MORE STUDY!!!
+	/*get attrib means get the location of input entry of shader in program, data type is Uint*/
+	/*And we use glVertexAttribPointer to connect buffer array and the location of input entry we just got*/
 	posAttrib = glGetAttribLocation( shaderProgram, "position_modelspace" );		
 	glEnableVertexAttribArray( posAttrib );
 	glBindBuffer( GL_ARRAY_BUFFER, vbo );
@@ -269,6 +259,17 @@ bool init ()
 		return false;
 	}
 
+	//Get the uniform location to change their values
+	uniRevoX = glGetUniformLocation( shaderProgram, "revoX" );
+	uniRevoY = glGetUniformLocation( shaderProgram, "revoY" );
+	uniRevoZ = glGetUniformLocation( shaderProgram, "revoZ" );
+	uniRota = glGetUniformLocation( shaderProgram, "rota" );
+	uniModel = glGetUniformLocation( shaderProgram, "model" );
+	uniView = glGetUniformLocation( shaderProgram, "view" );
+	uniProj = glGetUniformLocation( shaderProgram, "proj" );
+	uniViewport = glGetUniformLocation( shaderProgram, "viewport" );
+	uniLight = glGetUniformLocation( shaderProgram, "lightPosition_space" );
+
 	return true;
 }
 
@@ -284,7 +285,8 @@ void draw ()
 	
 	//Draw a triangle from the three vertices
 	glViewport( 0, 0, SCREEN_WIDTH, SCREEN_HEIGHT );	
-	glDrawElements( GL_TRIANGLES, 2*3*6, GL_UNSIGNED_INT, 0 );		//Load 3 indices to draw, the data type is GLuint, and there is no offset
+	glDrawElements( GL_TRIANGLES, vertexNum, GL_UNSIGNED_INT, 0 );		//Load 3 indices to draw, the data type is GLuint, and there is no offset
+	//glDrawRangeElements( GL_TRIANGLES, 0, vertexNum, 30, GL_INT, 0 );
 
 	//Swap window
 	SDL_GL_SwapWindow( glWindow );			
@@ -365,8 +367,14 @@ void eventHandler ( int key )
 
 	//Change the projection mode
 	case SDLK_KP_5:	
-		if( projMat[3][2] == 0 )	projMat[3][2] = 1;	
-		else	projMat[3][2] = 0;
+		if( modelMat[3][2] == 0 ){
+			modelMat[3][2] = 100;	
+			setPerspec( projMat,-5, 5, 5,-5, 1, 10 );
+		}
+		else{
+			modelMat[3][2] = 0;
+			setOrtho( projMat,-2, 2, -2, 2, -5, 5 );
+		}
 		break;
 
 	//Increase or decrease the value	
@@ -502,16 +510,6 @@ int main ( int argc, char* argv[] )
 	SDL_Event event;
 	bool quit = false;
 
-	//Get the uniform location to change their values
-	uniRevoX = glGetUniformLocation( shaderProgram, "revoX" );
-	uniRevoY = glGetUniformLocation( shaderProgram, "revoY" );
-	uniRevoZ = glGetUniformLocation( shaderProgram, "revoZ" );
-	uniRota = glGetUniformLocation( shaderProgram, "rota" );
-	uniModel = glGetUniformLocation( shaderProgram, "model" );
-	uniView = glGetUniformLocation( shaderProgram, "view" );
-	uniProj = glGetUniformLocation( shaderProgram, "proj" );
-	uniViewport = glGetUniformLocation( shaderProgram, "viewport" );
-	uniLight = glGetUniformLocation( shaderProgram, "lightPosition_space" );
 
 	while( quit == false ){
 		
@@ -531,8 +529,8 @@ int main ( int argc, char* argv[] )
 			}
 			
 			else if( event.type == SDL_MOUSEMOTION ){
-				lightPosition[0] = -25 + 50*( (float)event.motion.x / SCREEN_WIDTH );
-				lightPosition[2] = -25 + 50*( (float)event.motion.y / SCREEN_HEIGHT );
+				lightPosition[0] =-25 + 50*( (float)event.motion.x / SCREEN_WIDTH );
+				lightPosition[2] = 25 - 50*( (float)event.motion.y / SCREEN_HEIGHT );
 			}
 		}	
 
