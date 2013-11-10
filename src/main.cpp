@@ -21,6 +21,7 @@ const int FRAME_PER_SEC = 60;
 
 SDL_Window *glWindow = NULL;
 SDL_GLContext glContext;
+int glWindowID;
 
 SDL_Window *subWindow = NULL;
 
@@ -31,7 +32,7 @@ GLuint vbo;		//Vertex Buffer Object
 GLuint elementNum;	//Number of loaded vertics
 
 GLuint normalBuffer;	//Normal buffer
-GLuint vao;		//Vertex Array Object
+GLuint sphere;		//Vertex Array Object
 GLuint ebo;		//Element Buffer Object
 GLuint vertexShader;	
 GLuint fragmentShader;
@@ -130,6 +131,8 @@ bool init ()
 			SCREEN_WIDTH, SCREEN_HEIGHT,
 			SDL_WINDOW_OPENGL | SDL_WINDOW_RESIZABLE
 			);
+	glWindowID = SDL_GetWindowID( glWindow );
+	if( glWindow == NULL )	return false;
 
 	//Create openGL context	
 	glContext = SDL_GL_CreateContext( glWindow );
@@ -139,8 +142,8 @@ bool init ()
 	glewInit();
 
 	//Create a VertexArrayObject and copy the vertex data to it
-	glGenVertexArrays( 1, &vao );
-	glBindVertexArray( vao );
+	glGenVertexArrays( 1, &sphere );
+	glBindVertexArray( sphere );
 
 	//Generate a VertexBufferObject and store the vertex data into it
 	vector<GLfloat> vertex;
@@ -329,7 +332,7 @@ void cleanUp ()
 	//Delete VBO and VAO	
 	glDeleteBuffers( 1, &vbo );
 	glDeleteBuffers( 1, &normalBuffer );
-	glDeleteVertexArrays( 1, &vao );
+	glDeleteVertexArrays( 1, &sphere );
 
 	//Exit SDL subsystem	
 	SDL_Quit();
@@ -525,11 +528,13 @@ effect ()
 int
 main ( int argc, char* argv[] )
 {
-	if( init() == false )	return 1;
+	if( init() == false ){
+		cleanUp();
+		return 1;
+	}	
 
 	Timer fps;
 	SDL_Event event;
-	int cameraVolum = 2;
 	bool quit = false;
 	count = elementNum/3;
 
