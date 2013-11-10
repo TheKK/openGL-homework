@@ -28,9 +28,8 @@ uniform mat4 viewport;	//Viewport matrix
 
 uniform vec3 lightPosition_space;
 
-
 void main () {
-	gl_Position = viewport * proj * view * revoX * revoY * revoZ * model * rota * vec4( position_modelspace, 1.0 );
+	gl_Position = viewport * proj * view * revoX * revoY * revoZ * model * rota * vec4( ( position_modelspace ), 1.0 );
 	
 	//Object in the world space
 	position_worldspace = ( revoX * revoY * revoZ * model * rota * vec4( position_modelspace, 1.0 ) ).xyz;

@@ -12,9 +12,6 @@ author: TheKK <thumbd03803@gmail.com>
 #define VERTEX_SHADER_PATH	"shader/basicShader.vertexshader"
 #define FRAGMENT_SHADER_PATH	"shader/basicShader.fragmentshader"
 
-void
-effect();
-
 using namespace std;
 
 const int SCREEN_WIDTH = 800;
@@ -23,15 +20,15 @@ const int SCREEN_HEIGHT = SCREEN_WIDTH;
 const int FRAME_PER_SEC = 60;
 
 SDL_Window *glWindow = NULL;
-SDL_Window *subWindow = NULL;
-
 SDL_GLContext glContext;
+
+SDL_Window *subWindow = NULL;
 
 bool windowed = true;
 GLuint count = 0;
 
 GLuint vbo;		//Vertex Buffer Object
-GLuint vertexNum;	//Number of loaded vertics
+GLuint elementNum;	//Number of loaded vertics
 
 GLuint normalBuffer;	//Normal buffer
 GLuint vao;		//Vertex Array Object
@@ -170,7 +167,7 @@ bool init ()
 			&element[ 0 ],
 			GL_STATIC_DRAW
 			);	
-	vertexNum = element.size();
+	elementNum = element.size();
 
 	//Generate a NormalBufferObject and store the normal data into it
 	glGenBuffers( 1, &normalBuffer );
@@ -279,7 +276,7 @@ bool init ()
 
 void windowResize( int width, int height )
 {
-//	setViewport( 0, 0, width, height );
+	glViewport( 0, 0, width, height );
 }
 
 void draw ()
@@ -287,13 +284,11 @@ void draw ()
 	//Clear the screen
 	glClear( GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT );
 
-	//Draw a triangle from the three vertices
-	glViewport( 0, 0, SCREEN_WIDTH, SCREEN_HEIGHT );	
-
-	if( count < vertexNum/3 )	count++;
-	glDrawRangeElements( GL_TRIANGLES, 6*count, 6*count+2, 6*count+6, GL_UNSIGNED_INT, 0 );
+	if( count != elementNum ) 
+		glDrawRangeElements( GL_TRIANGLES, 0, 0, 6*count, GL_UNSIGNED_INT, 0 );
+	else
+		glDrawRangeElements( GL_TRIANGLES, 0, elementNum, elementNum, GL_UNSIGNED_INT, 0 );
 	
-
 	//Swap window
 	SDL_GL_SwapWindow( glWindow );			
 }
@@ -313,6 +308,8 @@ void update ()
 	glUniformMatrix4fv( uniViewport, 1, GL_TRUE, (GLfloat*)viewportMat );
 
 	glUniform3fv( uniLight, 1, (GLfloat*)lightPosition ); 
+
+	if( count < elementNum/3 )	count++;
 }
 
 void cleanUp ()	
@@ -348,7 +345,12 @@ void eventHandler ( int key )
 	case SDLK_z:	selectAxis = Z_AXIS;	break;
 	
 	//Add count
-	case SDLK_e:	count = 0;	break;
+	case SDLK_e:
+		if( count == elementNum/3 )	
+			count = 0;
+		else
+			count = elementNum/3;
+		break;
 
 	//Change mode	
 	case SDLK_s:	selectMode = SCALE;		break;
@@ -526,10 +528,10 @@ main ( int argc, char* argv[] )
 	if( init() == false )	return 1;
 
 	Timer fps;
-	int cameraVolum = 2;
 	SDL_Event event;
+	int cameraVolum = 2;
 	bool quit = false;
-
+	count = elementNum/3;
 
 	while( quit == false ){
 		
@@ -539,13 +541,15 @@ main ( int argc, char* argv[] )
 		//Event handler
 		while( SDL_PollEvent( &event ) ){
 			if( event.type == SDL_QUIT )	quit = true;
-			else if( event.type == SDL_KEYDOWN )	eventHandler( event.key.keysym.sym );
+			else if( event.type == SDL_KEYDOWN )
+				eventHandler( event.key.keysym.sym );
+
 			else if( event.type == SDL_WINDOWEVENT && event.window.event == SDL_WINDOWEVENT_RESIZED )
 				windowResize( event.window.data1, event.window.data2 );
 
 			else if( event.type == SDL_MOUSEWHEEL ){
-				cameraVolum += event.wheel.y;
-				setOrtho( projMat,-1*cameraVolum, cameraVolum,-1*cameraVolum, cameraVolum,-1*cameraVolum, cameraVolum );
+				if( event.wheel.y > 0 )	lightPosition[1] += 1;
+				else			lightPosition[1] -= 1;
 			}
 			
 			else if( event.type == SDL_MOUSEMOTION ){

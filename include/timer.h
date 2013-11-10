@@ -5,7 +5,7 @@ timer.h
 #define TIMER_H
 
 #include <iostream>
-#include <SDL/SDL.h>
+#include "basicNeed.h" 
 
 class Timer
 {

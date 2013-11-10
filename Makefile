@@ -1,7 +1,7 @@
 CXX = g++
 CXXFLAG = -Wall -DGLEW_STATIC 
 SRC = $(PWD)/src/*.cpp
-OBJ = main.o timer.o functions.o
+OBJ = main.o timer.o window.o functions.o 
 INCLUDE = -I $(PWD)/include
 LIBS = -lSDL2main -lSDL2 -lGLEW -lGL -lGLU
 
