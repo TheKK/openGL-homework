@@ -3,13 +3,20 @@
 functions.cpp
 
 author: TheKK <thumbd03803@gmail.com>
-date: 10/28/2013
 
 */
 #include "functions.h"
 
-void setOrtho ( float projMat[4][4], float left, float right, float bottom, float top, float near, float far )
+void
+setOrtho ( float projMat[4][4], float left, float right, float bottom, float top, float near, float far )
 {	
+	//Initialize content
+	for( unsigned int i = 0; i < 4; i++ )
+		for( unsigned int j = 0; j < 4; j++ ){
+			if( i == j )	projMat[i][j] = 1;
+			else projMat[i][j] = 0;
+		}
+		
 	projMat[0][0] = 2.0 / ( right - left );
 	projMat[1][1] = 2.0 / ( top - bottom );
 	projMat[2][2] = 2.0 / ( near - far );
@@ -19,7 +26,26 @@ void setOrtho ( float projMat[4][4], float left, float right, float bottom, floa
 	projMat[2][3] = 1.0 *( near + far ) / ( near - far );	
 }
 
-void rotationX ( float matrix[4][4], double degree )
+void
+setPerspec ( float projMat[4][4], float left, float right, float top, float bottom, float near, float far )
+{
+	//Initialize content
+	for( unsigned int i = 0; i < 4; i++ )
+		for( unsigned int j = 0; j < 4; j++ ){
+			if( i == j )	projMat[i][j] = 1;
+			else projMat[i][j] = 0;
+		}
+
+	projMat[0][0] = -1 * near * ( 2 / ( right - left ) );
+	projMat[1][1] = -1 * near * ( 2 / ( top - bottom ) );
+	projMat[2][2] = ( near + far ) / ( near - far );
+
+	projMat[2][3] = ( -2 * near * far ) / ( near - far );
+	projMat[3][2] = -1;
+}
+
+void
+rotationX ( float matrix[4][4], double degree )
 {	
 	float sum = 0;
 	float tmp[4][4];
@@ -46,7 +72,8 @@ void rotationX ( float matrix[4][4], double degree )
 			matrix[i][j] = tmp[i][j];
 }
 
-void rotationY ( float matrix[4][4], double degree )
+void
+rotationY ( float matrix[4][4], double degree )
 {	
 	float sum = 0;
 	float tmp[4][4];
@@ -73,7 +100,8 @@ void rotationY ( float matrix[4][4], double degree )
 			matrix[i][j] = tmp[i][j];
 }
 
-void rotationZ ( float matrix[4][4], double degree )
+void
+rotationZ ( float matrix[4][4], double degree )
 {	
 	float sum = 0;
 	float tmp[4][4];
@@ -100,7 +128,8 @@ void rotationZ ( float matrix[4][4], double degree )
 			matrix[i][j] = tmp[i][j];
 }
 
-bool loadOBJ ( string filePath, vector <GLfloat> *vertex, vector <GLuint> *element )
+bool
+loadOBJ ( string filePath, vector<GLfloat> &vertex, vector<GLuint> &element, vector<GLfloat> &normal )
 {	
 	//Create a file stream and check if there is an error
 	ifstream OBJsoruce( filePath.c_str(), ios::in );
@@ -111,35 +140,53 @@ bool loadOBJ ( string filePath, vector <GLfloat> *vertex, vector <GLuint> *eleme
 
 	//Load line by line and search keyword to identify the data type( vertex or normal or ETC )
 	string strTmp;
+	vector <GLfloat> normalTable;		//Recore the normal vector table
+	vector <GLuint> normalIndice;		//Recore the indice of normal vectors
+	float vx, vy, vz;
+	float nx, ny, nz;
+	int vertex1, vertex2, vertex3;
+	int normalIndex1, normalIndex2, normalIndex3;
 	while( getline( OBJsoruce, strTmp ) ){
-		if( strTmp.find( "v" ) == 0 ){
-			float x, y, z;	
-			sscanf( strTmp.c_str(), "%*s %f %f %f", &x, &y, &z );
-
-			vertex->push_back( x );
-			vertex->push_back( y );
-			vertex->push_back( z );
+		if( sscanf( strTmp.c_str(), "v %f %f %f\n", &vx, &vy, &vz ) > 0 ){
+			vertex.push_back( vx );
+			vertex.push_back( vy );
+			vertex.push_back( vz );
+		}
+	
+		else if( sscanf( strTmp.c_str(), "vn %f %f %f", &nx, &ny, &nz ) > 0 ){
+			normalTable.push_back( nx );
+			normalTable.push_back( ny );
+			normalTable.push_back( nz );
 		}
 		
-		else if( strTmp.find( "f" ) == 0 ){
-			int vertex1, vertex2, vertex3;
-			int normal1, normal2, normal3;
-			sscanf( strTmp.c_str(), "%*s %d//%d %d//%d %d//%d", &vertex1, &normal1, &vertex2, &normal2, &vertex3, &normal3 );
+		else if( sscanf( strTmp.c_str(), "%*s %d//%d %d//%d %d//%d", &vertex1, &normalIndex1, &vertex2, &normalIndex2, &vertex3, &normalIndex3 ) > 0 ){
+			element.push_back( vertex1 - 1 );			
+			element.push_back( vertex2 - 1 );			
+			element.push_back( vertex3 - 1 );			
 
-			element->push_back( vertex1 - 1 );			
-			element->push_back( vertex2 - 1 );			
-			element->push_back( vertex3 - 1 );			
-
-			//normal.push_back( normal1 );
-			//normal.push_back( normal2 );
-			//normal.push_back( normal3 );
-		}	
+			normalIndice.push_back( normalIndex1 - 1 );
+			normalIndice.push_back( normalIndex2 - 1 );
+			normalIndice.push_back( normalIndex3 - 1 );	
+		}
 	}
 
+	if( ( vertex.size() == 0 ) || ( normalTable.size() == 0 ) || ( element.size() == 0 ) || ( normalIndice.size() == 0 ) ){
+		cout << "OBJ file broken!" << endl;
+		return false;
+	}
+
+	//Match normal to each vertex
+	normal.resize( vertex.size(), 0 );
+	for( unsigned int i = 0; i < element.size(); i++ ){
+		normal[ element[i] * 3 + 0 ] += normalTable[ normalIndice[i] * 3 + 0 ];	
+		normal[ element[i] * 3 + 1 ] += normalTable[ normalIndice[i] * 3 + 1 ];	
+		normal[ element[i] * 3 + 2 ] += normalTable[ normalIndice[i] * 3 + 2 ];	
+	}	
 	return true;
 }
 
-string loadShaderSource ( string filePath )
+string
+loadShaderSource ( string filePath )
 {	
 	//Create file stream and check if there is an error
 	ifstream source( filePath.c_str(), ios::in );

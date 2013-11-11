@@ -1,38 +1,46 @@
 /*
 
 main.cpp
+-Just a main.cpp
 
 author: TheKK <thumbd03803@gmail.com>
-date: 10/28/2013
 
 */
 #include "basicNeed.h"
 #include "functions.h"
 #include "timer.h"
 
+#define VERTEX_SHADER_PATH	"shader/basicShader.vertexshader"
+#define FRAGMENT_SHADER_PATH	"shader/basicShader.fragmentshader"
+
 using namespace std;
 
 const int SCREEN_WIDTH = 800;
 const int SCREEN_HEIGHT = SCREEN_WIDTH;
-const int SCREEN_BPP = 32;
 
 const int FRAME_PER_SEC = 60;
 
 SDL_Window *glWindow = NULL;
+SDL_GLContext glContext;
+int glWindowID;
+
 SDL_Window *subWindow = NULL;
 
-SDL_GLContext glContext;
-
 bool windowed = true;
+GLuint count = 0;
 
 GLuint vbo;		//Vertex Buffer Object
+GLuint elementNum;	//Number of loaded vertics
+
 GLuint normalBuffer;	//Normal buffer
 GLuint vao;		//Vertex Array Object
 GLuint ebo;		//Element Buffer Object
+GLuint ebo2;
 GLuint vertexShader;	
 GLuint fragmentShader;
 GLuint shaderProgram;
-GLuint posAttrib;	//Position Attribute
+GLint posAttrib;	//Position attribute
+GLint normalAttrib;	//Normal attribute
 
 enum AXIS{ X_AXIS, Y_AXIS, Z_AXIS };
 enum MODE{ ROTATE, ROTATE_AXIS, TRANSLATE, SCALE, SHEAR };
@@ -89,22 +97,8 @@ float modelMat[][ 4 ] = {
 GLuint uniView;
 float viewMat[][ 4 ] = {
 		{ 1, 0, 0, 0 },
-		{ 0, 0,-1, 0 },
-		{ 0, 1, 0 ,0 },
-		{ 0, 0, 0, 1 }
-};	
-
-float viewMat2[][ 4 ] = {
-		{ 1, 0, 0, 0 },
-		{ 0,-1, 0, 0 },
 		{ 0, 0, 1, 0 },
-		{ 0, 0, 0, 1 }
-};	
-
-float viewMat3[][ 4 ] = {
-		{ 0, 0, 1, 0 },
-		{ 0, 1, 0, 0 },
-		{-1, 0, 0, 0 },
+		{ 0,-1, 0 ,0 },
 		{ 0, 0, 0, 1 }
 };	
 
@@ -124,25 +118,24 @@ float viewportMat[][4] = {
 		{ 0, 0, 0, 1 }
 };
 
+GLuint uniLight;
+float lightPosition[] = { 0, -30, 0 };
 
-void setViewport ( int x, int y, int w, int h )
-{
-	viewportMat[0][0] = w / 2;
-	viewportMat[1][1] = h / 2;
-	viewportMat[0][3] = w / ( 2 + x ); 
-	viewportMat[1][3] = h / ( 2 + y );
-}	
-
-bool init ()
+bool
+init ()
 {	
 	//Initiralize SDL subsystem
 	if( SDL_Init( SDL_INIT_VIDEO ) < 0 )	return false;
 
 	//Setup the window
-	glWindow = SDL_CreateWindow( "OpenGL",
-				SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED,
-				SCREEN_WIDTH, SCREEN_HEIGHT,
-				SDL_WINDOW_OPENGL | SDL_WINDOW_RESIZABLE );
+	glWindow = SDL_CreateWindow(
+			"OpenGL",
+			SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED,
+			SCREEN_WIDTH, SCREEN_HEIGHT,
+			SDL_WINDOW_OPENGL | SDL_WINDOW_RESIZABLE
+			);
+	glWindowID = SDL_GetWindowID( glWindow );
+	if( glWindow == NULL )	return false;
 
 	//Create openGL context	
 	glContext = SDL_GL_CreateContext( glWindow );
@@ -151,39 +144,49 @@ bool init ()
 	glewExperimental = GL_TRUE;
 	glewInit();
 
-	//Create a VertexArrayObject and copy the vertex data to it
+	//Create a VertexArrayObject
 	glGenVertexArrays( 1, &vao );
 	glBindVertexArray( vao );
 
-	//Generate a VertexBufferObject and store the vertex data in it
-	vector <GLfloat> vertex;
-	vector <GLfloat> nornaml;
-	vector <GLuint> element;
+	//Generate a VertexBufferObject and store the vertex data into it
+	vector<GLfloat> vertex;
+	vector<GLfloat> normal;
+	vector<GLuint> element;
 
 	//Load data from OBJ file
-	if( loadOBJ( "cube.obj", &vertex, &element ) == false )	return false;	
+	if( loadOBJ( "cube.obj", vertex, element, normal ) == false )	return false;	
 
+	//Generate a VertexBufferObject and store the vertice data into it
 	glGenBuffers( 1, &vbo );
 	glBindBuffer( GL_ARRAY_BUFFER, vbo );
 	glBufferData( GL_ARRAY_BUFFER,
-			vertex.size() * sizeof( GLfloat ),
+			vertex.size() * sizeof(GLfloat),
 			&vertex[ 0 ],
 			GL_STATIC_DRAW
 			);
 
-	//Generate a ElementBufferObject and store the element date in it
+	//Generate a ElementBufferObject and store the element data into it
 	glGenBuffers( 1, &ebo );
 	glBindBuffer( GL_ELEMENT_ARRAY_BUFFER, ebo );
 	glBufferData( GL_ELEMENT_ARRAY_BUFFER,
-			element.size() * sizeof( GLuint ),
+			element.size() * sizeof(GLuint),
 			&element[ 0 ],
 			GL_STATIC_DRAW
 			);	
-
+	elementNum = element.size();
+	
+	//Generate a NormalBufferObject and store the normal data into it
+	glGenBuffers( 1, &normalBuffer );
+	glBindBuffer( GL_ARRAY_BUFFER, normalBuffer );
+	glBufferData( GL_ARRAY_BUFFER,
+			normal.size() * sizeof(GLfloat),
+			&normal[ 0 ],
+			GL_STATIC_DRAW
+			);
 
 	/*SHADERS*/
 	//Create and compile vertex shader
-	string str = loadShaderSource( "shader/vertexShader" );
+	string str = loadShaderSource( VERTEX_SHADER_PATH );
 	if( str == "" )	return false;
 	vertexShader = glCreateShader( GL_VERTEX_SHADER );
 	glShaderSource( vertexShader,		//Shader type
@@ -194,7 +197,7 @@ bool init ()
 	glCompileShader( vertexShader );
 
 	//Create and compile fragment shader
-	str = loadShaderSource( "shader/fragmentShader" );
+	str = loadShaderSource( FRAGMENT_SHADER_PATH );
 	if( str == "" )	return false;
 	fragmentShader = glCreateShader( GL_FRAGMENT_SHADER );
 	glShaderSource( fragmentShader,
@@ -213,15 +216,23 @@ bool init ()
 	glUseProgram( shaderProgram );
 	
 	//Specity the layout of the vertex data			NEED MORE STUDY!!!
-	posAttrib = glGetAttribLocation( shaderProgram, "position" );		
+	/*get attrib means get the location of input entry of shader in program, data type is Uint*/
+	/*And we use glVertexAttribPointer to connect buffer array and the location of input entry we just got*/
+	posAttrib = glGetAttribLocation( shaderProgram, "position_modelspace" );		
 	glEnableVertexAttribArray( posAttrib );
+	glBindBuffer( GL_ARRAY_BUFFER, vbo );
 	glVertexAttribPointer( posAttrib, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(GLfloat), 0 );
 
+	normalAttrib = glGetAttribLocation( shaderProgram, "normal_modelspace" );		
+	glEnableVertexAttribArray( normalAttrib );
+	glBindBuffer( GL_ARRAY_BUFFER, normalBuffer );
+	glVertexAttribPointer( normalAttrib, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(GLfloat), 0 );
+
 	//Setup the clear color
-	glClearColor( 0.8f, 0.8f, 0.2f, 1.0f );	
+	glClearColor( 0.0f, 0.0f, 0.0f, 0.0f );
 
 	//Setup ortho	
-	setOrtho( projMat,-2, 2, -2, 2, -2, 2 );
+	setOrtho( projMat,-2, 2, -2, 2, -5, 5 );
 
 	//Enable depth cleaner
 	glEnable( GL_DEPTH_TEST );
@@ -255,36 +266,43 @@ bool init ()
 		return false;
 	}
 
+	//Get the uniform location to change their values
+	uniRevoX = glGetUniformLocation( shaderProgram, "revoX" );
+	uniRevoY = glGetUniformLocation( shaderProgram, "revoY" );
+	uniRevoZ = glGetUniformLocation( shaderProgram, "revoZ" );
+	uniRota = glGetUniformLocation( shaderProgram, "rota" );
+	uniModel = glGetUniformLocation( shaderProgram, "model" );
+	uniView = glGetUniformLocation( shaderProgram, "view" );
+	uniProj = glGetUniformLocation( shaderProgram, "proj" );
+	uniViewport = glGetUniformLocation( shaderProgram, "viewport" );
+	uniLight = glGetUniformLocation( shaderProgram, "lightPosition_space" );
+
 	return true;
 }
 
-void windowResize( int width, int height )
+void
+windowResize( int width, int height )
 {
-//	setViewport( 0, 0, width, height );
+	glViewport( 0, 0, width, height );
 }
 
-void draw ()
+void
+draw ()
 {
 	//Clear the screen
 	glClear( GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT );
+
+	if( count != elementNum ) 
+		glDrawRangeElements( GL_TRIANGLES, 0, 0, 6*count, GL_UNSIGNED_INT, 0 );
+	else
+		glDrawRangeElements( GL_TRIANGLES, 0, elementNum, elementNum, GL_UNSIGNED_INT, 0 );
 	
-	//Draw a triangle from the three vertices
-	glViewport( 0, 0, SCREEN_WIDTH, SCREEN_HEIGHT );
-	glDrawElements( GL_TRIANGLES, 2*3*6, GL_UNSIGNED_INT, 0 );		//Load 3 indices to draw, the data type is GLuint, and there is no offset
-
-	glViewport( 10, 10, 100, 100 );
-	glUniformMatrix4fv( uniView, 1, GL_TRUE, (GLfloat*)viewMat2 );
-	glDrawElements( GL_TRIANGLES, 2*3*6, GL_UNSIGNED_INT, 0 );
-
-	glViewport( 10, SCREEN_HEIGHT - 100 - 10, 100, 100 );
-	glUniformMatrix4fv( uniView, 1, GL_TRUE, (GLfloat*)viewMat3 );
-	glDrawElements( GL_TRIANGLES, 2*3*6, GL_UNSIGNED_INT, 0 );
-
 	//Swap window
 	SDL_GL_SwapWindow( glWindow );			
 }
 
-void update ()
+void
+update ()
 {
 	//Update the matrixes
 	glUniformMatrix4fv( uniRevoX, 1, GL_TRUE, (GLfloat*)revoXMat );
@@ -297,9 +315,14 @@ void update ()
 	glUniformMatrix4fv( uniView, 1, GL_TRUE, (GLfloat*)viewMat );
 	glUniformMatrix4fv( uniProj, 1, GL_TRUE, (GLfloat*)projMat );
 	glUniformMatrix4fv( uniViewport, 1, GL_TRUE, (GLfloat*)viewportMat );
+
+	glUniform3fv( uniLight, 1, (GLfloat*)lightPosition ); 
+
+	if( count < elementNum/3 )	count++;
 }
 
-void cleanUp ()	
+void
+cleanUp ()	
 {
 	//Delete window
 	SDL_DestroyWindow( glWindow );
@@ -315,13 +338,15 @@ void cleanUp ()
 
 	//Delete VBO and VAO	
 	glDeleteBuffers( 1, &vbo );
+	glDeleteBuffers( 1, &normalBuffer );
 	glDeleteVertexArrays( 1, &vao );
 
 	//Exit SDL subsystem	
 	SDL_Quit();
 }
 
-void eventHandler ( int key )
+void
+eventHandler ( int key )
 {
 	switch( key ){
 
@@ -329,6 +354,14 @@ void eventHandler ( int key )
 	case SDLK_x:	selectAxis = X_AXIS;	break;
 	case SDLK_y:	selectAxis = Y_AXIS;	break;
 	case SDLK_z:	selectAxis = Z_AXIS;	break;
+	
+	//Add count
+	case SDLK_e:
+		if( count == elementNum/3 )	
+			count = 0;
+		else
+			count = elementNum/3;
+		break;
 
 	//Change mode	
 	case SDLK_s:	selectMode = SCALE;		break;
@@ -356,8 +389,14 @@ void eventHandler ( int key )
 
 	//Change the projection mode
 	case SDLK_KP_5:	
-		if( projMat[3][2] == 0 )	projMat[3][2] = 1;	
-		else	projMat[3][2] = 0;
+		if( modelMat[3][2] == 0 ){
+			modelMat[3][2] = 100;	
+			setPerspec( projMat,-5, 5, 5,-5, 1, 10 );
+		}
+		else{
+			modelMat[3][2] = 0;
+			setOrtho( projMat,-2, 2, -2, 2, -5, 5 );
+		}
 		break;
 
 	//Increase or decrease the value	
@@ -484,24 +523,34 @@ void eventHandler ( int key )
 	}
 }
 
-int main ( int argc, char* argv[] )
+void
+effect ()
 {
-	if( init() == false )	return 1;
+	//Clear the screen
+	glClear( GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT );
+	SDL_GL_SwapWindow( glWindow );			
+
+	//Draw a triangle from the three vertices
+}
+
+int
+main ( int argc, char* argv[] )
+{
+	if( init() == false ){
+		cleanUp();
+		return 1;
+	}	
 
 	Timer fps;
-	int cameraVolum = 2;
 	SDL_Event event;
 	bool quit = false;
+	count = elementNum/3;
 
-	//Get the uniform location to change their values
-	uniRevoX = glGetUniformLocation( shaderProgram, "revoX" );
-	uniRevoY = glGetUniformLocation( shaderProgram, "revoY" );
-	uniRevoZ = glGetUniformLocation( shaderProgram, "revoZ" );
-	uniRota = glGetUniformLocation( shaderProgram, "rota" );
-	uniModel = glGetUniformLocation( shaderProgram, "model" );
-	uniView = glGetUniformLocation( shaderProgram, "view" );
-	uniProj = glGetUniformLocation( shaderProgram, "proj" );
-	uniViewport = glGetUniformLocation( shaderProgram, "viewport" );
+	string str("vn 1 1 1");
+	size_t pos = 0;
+	
+	pos = str.find( "v", 0, 1 );
+	cout << pos << endl;
 
 	while( quit == false ){
 		
@@ -511,13 +560,20 @@ int main ( int argc, char* argv[] )
 		//Event handler
 		while( SDL_PollEvent( &event ) ){
 			if( event.type == SDL_QUIT )	quit = true;
-			else if( event.type == SDL_KEYDOWN )	eventHandler( event.key.keysym.sym );
+			else if( event.type == SDL_KEYDOWN )
+				eventHandler( event.key.keysym.sym );
+
 			else if( event.type == SDL_WINDOWEVENT && event.window.event == SDL_WINDOWEVENT_RESIZED )
 				windowResize( event.window.data1, event.window.data2 );
 
 			else if( event.type == SDL_MOUSEWHEEL ){
-				cameraVolum += event.wheel.y;
-				setOrtho( projMat,-1*cameraVolum, cameraVolum,-1*cameraVolum, cameraVolum,-1*cameraVolum, cameraVolum );
+				if( event.wheel.y > 0 )	lightPosition[1] += 1;
+				else			lightPosition[1] -= 1;
+			}
+			
+			else if( event.type == SDL_MOUSEMOTION ){
+				lightPosition[0] =-25 + 50*( (float)event.motion.x / SCREEN_WIDTH );
+				lightPosition[2] = 25 - 50*( (float)event.motion.y / SCREEN_HEIGHT );
 			}
 		}	
 
