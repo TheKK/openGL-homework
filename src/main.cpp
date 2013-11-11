@@ -1,6 +1,7 @@
 /*
 
 main.cpp
+-Just a main.cpp
 
 author: TheKK <thumbd03803@gmail.com>
 
@@ -32,8 +33,9 @@ GLuint vbo;		//Vertex Buffer Object
 GLuint elementNum;	//Number of loaded vertics
 
 GLuint normalBuffer;	//Normal buffer
-GLuint sphere;		//Vertex Array Object
+GLuint vao;		//Vertex Array Object
 GLuint ebo;		//Element Buffer Object
+GLuint ebo2;
 GLuint vertexShader;	
 GLuint fragmentShader;
 GLuint shaderProgram;
@@ -119,7 +121,8 @@ float viewportMat[][4] = {
 GLuint uniLight;
 float lightPosition[] = { 0, -30, 0 };
 
-bool init ()
+bool
+init ()
 {	
 	//Initiralize SDL subsystem
 	if( SDL_Init( SDL_INIT_VIDEO ) < 0 )	return false;
@@ -141,9 +144,9 @@ bool init ()
 	glewExperimental = GL_TRUE;
 	glewInit();
 
-	//Create a VertexArrayObject and copy the vertex data to it
-	glGenVertexArrays( 1, &sphere );
-	glBindVertexArray( sphere );
+	//Create a VertexArrayObject
+	glGenVertexArrays( 1, &vao );
+	glBindVertexArray( vao );
 
 	//Generate a VertexBufferObject and store the vertex data into it
 	vector<GLfloat> vertex;
@@ -153,7 +156,7 @@ bool init ()
 	//Load data from OBJ file
 	if( loadOBJ( "cube.obj", vertex, element, normal ) == false )	return false;	
 
-	//Generate a VertexArrayObject and store the vertice data into it
+	//Generate a VertexBufferObject and store the vertice data into it
 	glGenBuffers( 1, &vbo );
 	glBindBuffer( GL_ARRAY_BUFFER, vbo );
 	glBufferData( GL_ARRAY_BUFFER,
@@ -171,7 +174,7 @@ bool init ()
 			GL_STATIC_DRAW
 			);	
 	elementNum = element.size();
-
+	
 	//Generate a NormalBufferObject and store the normal data into it
 	glGenBuffers( 1, &normalBuffer );
 	glBindBuffer( GL_ARRAY_BUFFER, normalBuffer );
@@ -277,12 +280,14 @@ bool init ()
 	return true;
 }
 
-void windowResize( int width, int height )
+void
+windowResize( int width, int height )
 {
 	glViewport( 0, 0, width, height );
 }
 
-void draw ()
+void
+draw ()
 {
 	//Clear the screen
 	glClear( GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT );
@@ -296,7 +301,8 @@ void draw ()
 	SDL_GL_SwapWindow( glWindow );			
 }
 
-void update ()
+void
+update ()
 {
 	//Update the matrixes
 	glUniformMatrix4fv( uniRevoX, 1, GL_TRUE, (GLfloat*)revoXMat );
@@ -315,7 +321,8 @@ void update ()
 	if( count < elementNum/3 )	count++;
 }
 
-void cleanUp ()	
+void
+cleanUp ()	
 {
 	//Delete window
 	SDL_DestroyWindow( glWindow );
@@ -332,13 +339,14 @@ void cleanUp ()
 	//Delete VBO and VAO	
 	glDeleteBuffers( 1, &vbo );
 	glDeleteBuffers( 1, &normalBuffer );
-	glDeleteVertexArrays( 1, &sphere );
+	glDeleteVertexArrays( 1, &vao );
 
 	//Exit SDL subsystem	
 	SDL_Quit();
 }
 
-void eventHandler ( int key )
+void
+eventHandler ( int key )
 {
 	switch( key ){
 
@@ -537,6 +545,12 @@ main ( int argc, char* argv[] )
 	SDL_Event event;
 	bool quit = false;
 	count = elementNum/3;
+
+	string str("vn 1 1 1");
+	size_t pos = 0;
+	
+	pos = str.find( "v", 0, 1 );
+	cout << pos << endl;
 
 	while( quit == false ){
 		
