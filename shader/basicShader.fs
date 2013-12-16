@@ -1,7 +1,7 @@
 #version 400 core
 
 in vec3 position_worldspace;
-in vec3 normal_cameraspace;
+flat in vec3 normal_cameraspace;
 in vec3 eyeDirection_cameraspace;
 in vec3 lightDirection_cameraspace;
 in vec3 lightPosition_worldspace;

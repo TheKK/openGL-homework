@@ -12,7 +12,7 @@ in vec3 position_modelspace;
 in vec3 normal_modelspace;
 
 out vec3 position_worldspace;
-out vec3 normal_cameraspace;
+flat out vec3 normal_cameraspace;
 out vec3 eyeDirection_cameraspace;
 out vec3 lightDirection_cameraspace;
 out vec3 lightPosition_worldspace;
