@@ -10,8 +10,9 @@ author: TheKK <thumbd03803@gmail.com>
 #include "functions.h"
 #include "timer.h"
 
-#define VERTEX_SHADER_PATH	"shader/basicShader.vertexshader"
-#define FRAGMENT_SHADER_PATH	"shader/basicShader.fragmentshader"
+//Path of GLSL files
+#define VERTEX_SHADER_PATH	"shader/basicShader.vs"
+#define FRAGMENT_SHADER_PATH	"shader/basicShader.fs"
 
 using namespace std;
 
@@ -266,7 +267,7 @@ init ()
 		return false;
 	}
 
-	//Get the uniform location to change their values
+	//Get uniform locations in GLSL 
 	uniRevoX = glGetUniformLocation( shaderProgram, "revoX" );
 	uniRevoY = glGetUniformLocation( shaderProgram, "revoY" );
 	uniRevoZ = glGetUniformLocation( shaderProgram, "revoZ" );
@@ -311,13 +312,16 @@ update ()
 	glUniformMatrix4fv( uniRota, 1, GL_TRUE, (GLfloat*)rotaMat );
 
 	//GL_TRUE means to transpose the matrix before applying, because matrix in GLSL is column major
+	//We set as GL_TRUE here
 	glUniformMatrix4fv( uniModel, 1, GL_TRUE, (GLfloat*)modelMat );
 	glUniformMatrix4fv( uniView, 1, GL_TRUE, (GLfloat*)viewMat );
 	glUniformMatrix4fv( uniProj, 1, GL_TRUE, (GLfloat*)projMat );
 	glUniformMatrix4fv( uniViewport, 1, GL_TRUE, (GLfloat*)viewportMat );
 
+	//Light position
 	glUniform3fv( uniLight, 1, (GLfloat*)lightPosition ); 
 
+	//This counter is used for special effect
 	if( count < elementNum/3 )	count++;
 }
 
@@ -328,15 +332,15 @@ cleanUp ()
 	SDL_DestroyWindow( glWindow );
 	glWindow = NULL;
 
-	//Delete context	
+	//Delete openGL context	
 	SDL_GL_DeleteContext( glContext );
 
-	//Delete shader and program
+	//Delete shaders and program
 	glDeleteProgram( shaderProgram );
 	glDeleteShader( vertexShader );
 	glDeleteShader( fragmentShader );
 
-	//Delete VBO and VAO	
+	//Delete VBO, NBO and VAO	
 	glDeleteBuffers( 1, &vbo );
 	glDeleteBuffers( 1, &normalBuffer );
 	glDeleteVertexArrays( 1, &vao );
@@ -350,12 +354,12 @@ eventHandler ( int key )
 {
 	switch( key ){
 
-	//Change axis
+	//Change target axis
 	case SDLK_x:	selectAxis = X_AXIS;	break;
 	case SDLK_y:	selectAxis = Y_AXIS;	break;
 	case SDLK_z:	selectAxis = Z_AXIS;	break;
 	
-	//Add count
+	//Special effect
 	case SDLK_e:
 		if( count == elementNum/3 )	
 			count = 0;
@@ -523,7 +527,7 @@ eventHandler ( int key )
 	}
 }
 
-void
+/*void
 effect ()
 {
 	//Clear the screen
@@ -531,7 +535,7 @@ effect ()
 	SDL_GL_SwapWindow( glWindow );			
 
 	//Draw a triangle from the three vertices
-}
+}*/
 
 int
 main ( int argc, char* argv[] )
